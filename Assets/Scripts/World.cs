@@ -8,8 +8,6 @@ using Random = UnityEngine.Random;
 public class World : MonoBehaviour
 {
     public delegate void Function(int xChunk, int zChunk);
-
-    private Function function;
     public static World Instance { get; private set; }
 
     public Material material;
@@ -19,6 +17,7 @@ public class World : MonoBehaviour
     private float scale=10f;
     private int chunkMaxHeight = 15;
     private int numberOfChunksInLine = 5;
+    private int playerVisibilityIn1Direction;
 
     private ArrayList chunkList = new ArrayList();
     private ArrayList blockList = new ArrayList();
@@ -28,6 +27,7 @@ public class World : MonoBehaviour
     public void Awake()
     {
         Instance = this;
+        playerVisibilityIn1Direction = numberOfChunksInLine;
         offsetX = Random.Range(0f, 99999f);
         offsetY = Random.Range(0f, 99999f);
     }
@@ -47,33 +47,11 @@ public class World : MonoBehaviour
     private void Update()
     {
         Vector3 playerPos = playerTransform.position;
-        Vector2Int playerPosInChunkCoord = PlayerPosInChunkCoord((int)playerPos.x, (int)playerPos.z);
+        Vector3Int playerPosInChunkCoord = PlayerPosInChunkCoord((int)playerPos.x, (int)playerPos.z);
 
-        //for (int x = -5; x < numberOfChunksInLine; x++)                                               //in case Test-function would stop working
-        //    for (int z = -5; z < numberOfChunksInLine; z++)
-        //    {
-        //        if (!IsChunk(x + playerPosInChunkCoord.x, z + playerPosInChunkCoord.y) && x + playerPosInChunkCoord.x >= 0 && z + playerPosInChunkCoord.y >= 0)
-        //        {
-        //            AddBlocksToArray(x + playerPosInChunkCoord.x, z + playerPosInChunkCoord.y);
-        //        }
-        //    }
-
-        //AddNewBlocksToArray(playerPosInChunkCoord.x, playerPosInChunkCoord.y);
-        //CreateNewChunks(playerPosInChunkCoord.x, playerPosInChunkCoord.y);
-        UpdateWorld(playerPosInChunkCoord.x, playerPosInChunkCoord.y, AddNewBlocksToArray);
-        UpdateWorld(playerPosInChunkCoord.x, playerPosInChunkCoord.y, PrepareChunkListAndAddNewChunk);
-
-        //for (int x = -4; x < numberOfChunksInLine; x++)                                               //in case CreateNewChunks-function would stop working
-        //    for (int z = -4; z < numberOfChunksInLine; z++)
-        //    {
-        //        if (!IsChunk(x + playerPosInChunkCoord.x, z + playerPosInChunkCoord.y) && x + playerPosInChunkCoord.x >=0 && z + playerPosInChunkCoord.y >= 0)
-        //        {
-        //            int xChunkPos = x + playerPosInChunkCoord.x;
-        //            int zChunkPos = z + playerPosInChunkCoord.y;
-        //            PrepareChunkList(xChunkPos, zChunkPos);
-        //            ((ArrayList)chunkList[xChunkPos])[zChunkPos] = new Chunk(xChunkPos * chunkWidth, zChunkPos * chunkWidth, transform, this);
-        //        }
-        //    }
+        UpdateWorld(playerPosInChunkCoord.x, playerPosInChunkCoord.z, AddNewBlocksToArray);
+        UpdateWorld(playerPosInChunkCoord.x, playerPosInChunkCoord.z, PrepareChunkListAndAddNewChunk);
+        DeleteChunksOutOfPlayerVisibility(playerPosInChunkCoord.x, playerPosInChunkCoord.z);
     }
 
     private void AddNewBlocksToArray(int xChunkPos, int zChunkPos)
@@ -90,7 +68,7 @@ public class World : MonoBehaviour
                 int max;
                 max = GenerateHeight(blockGlobalXPosition + localOffsetX, blockGlobalZPosition + localOffsetZ);
 
-                SetBlocksInArrayInYDimension(max, blockGlobalXPosition + localOffsetX, blockGlobalZPosition + localOffsetZ);
+                SetStartingBlocksInArrayInYDimension(max, blockGlobalXPosition + localOffsetX, blockGlobalZPosition + localOffsetZ);
             }
         }
     }
@@ -107,13 +85,13 @@ public class World : MonoBehaviour
             return false; 
         }
     }
-    private Vector2Int PlayerPosInChunkCoord(int xPlayerPos, int zPlayerPos)
+    private Vector3Int PlayerPosInChunkCoord(int xPlayerPos, int zPlayerPos)
     {
         int xChunkPos = xPlayerPos / chunkWidth;
         int zChunkPos = zPlayerPos / chunkWidth;
-        return new Vector2Int(xChunkPos, zChunkPos);
+        return new Vector3Int(xChunkPos, 0,zChunkPos);
     }
-    private Chunk GetChunkUsingGlobalPos(float xPos, float zPos)
+    public Chunk GetChunkUsingGlobalPos(float xPos, float zPos)
     {
         int xChunkPos = (int)xPos / chunkWidth;
         int zChunkPos = (int)zPos / chunkWidth;
@@ -138,7 +116,7 @@ public class World : MonoBehaviour
                 ((ArrayList)blockList[x]).Add(new ArrayList());
                 int max;
                 max = GenerateHeight(x, z);
-                SetBlocksInArrayInYDimension(max,x,z);
+                SetStartingBlocksInArrayInYDimension(max,x,z);
             }
         }
     }
@@ -162,15 +140,18 @@ public class World : MonoBehaviour
         return chunkMaxHeight;
     }
 
-    private void SetBlocksInArrayInYDimension(int heightOfTerrain, int xIndexArrayList, int zIndexArrayList)
+    private void SetStartingBlocksInArrayInYDimension(int heightOfTerrain, int xIndexArrayList, int zIndexArrayList)
     {
-        for (int y = 0; y < heightOfTerrain; y++)
+        if (((ArrayList)((ArrayList)blockList[xIndexArrayList])[zIndexArrayList]).Count < chunkMaxHeight)
         {
-            ((ArrayList)((ArrayList)blockList[xIndexArrayList])[zIndexArrayList]).Add(1);
-        }
-        for (int y = heightOfTerrain; y < chunkMaxHeight + 1; y++)
-        {
-            ((ArrayList)((ArrayList)blockList[xIndexArrayList])[zIndexArrayList]).Add(0);
+            for (int y = 0; y < heightOfTerrain; y++)
+            {
+                ((ArrayList)((ArrayList)blockList[xIndexArrayList])[zIndexArrayList]).Add(1);
+            }
+            for (int y = heightOfTerrain; y < chunkMaxHeight + 1; y++)
+            {
+                ((ArrayList)((ArrayList)blockList[xIndexArrayList])[zIndexArrayList]).Add(0);
+            }
         }
     }
 
@@ -218,7 +199,6 @@ public class World : MonoBehaviour
             for (int i = 0; i < amountOfChunksToAdd; i++)
                 ((ArrayList)chunkList[xChunkPos]).Add(null);
         }
-
         ((ArrayList)chunkList[xChunkPos])[zChunkPos] = new Chunk(xChunkPos * chunkWidth, zChunkPos * chunkWidth, transform, this);
     }
 
@@ -251,7 +231,42 @@ public class World : MonoBehaviour
         }
     }
 
-    private void UpdateOldChunks()
+    private void DeleteChunksOutOfPlayerVisibility(int xChunkPos, int zChunkPos)
+    {
+        int playerVibility = playerVisibilityIn1Direction;
+        for (int i = -4; i < numberOfChunksInLine; i++)
+        {
+            if (xChunkPos - playerVibility >= 0)
+            {
+                if (IsChunk(xChunkPos - playerVibility, zChunkPos + i) && zChunkPos + i >= 0)
+                {
+                    DestroyChunk(xChunkPos - playerVibility, zChunkPos + i);
+                }
+            }
+            if (zChunkPos - playerVibility >= 0)
+            {
+                if (IsChunk(xChunkPos + i, zChunkPos - playerVibility) && xChunkPos + i >= 0)
+                {
+                    DestroyChunk(xChunkPos + i, zChunkPos - playerVibility);
+                }
+            }
+            if (IsChunk(xChunkPos + playerVibility, zChunkPos + i) && zChunkPos + i >= 0)
+            {
+                DestroyChunk(xChunkPos + playerVibility, zChunkPos + i);
+            }
+            if (IsChunk(xChunkPos + i, zChunkPos + playerVibility) && xChunkPos + i >= 0)
+            {
+                DestroyChunk(xChunkPos + i, zChunkPos + playerVibility);
+            }
+        }
+    }
+
+    private void DestroyChunk(int xChunkPos, int zChunkPos)
+    {
+        Destroy(((Chunk)((ArrayList)chunkList[xChunkPos])[zChunkPos]).gameObject);
+        ((ArrayList)chunkList[xChunkPos])[zChunkPos] = null;
+    }
+    private void UpdateActiveChunks()
     {
 
     }

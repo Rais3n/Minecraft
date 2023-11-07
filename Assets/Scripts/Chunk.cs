@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 using static UnityEditor.PlayerSettings;
 
@@ -9,7 +10,7 @@ public class Chunk
 
     private int width;
 
-    private GameObject gameObject;
+    public GameObject gameObject;
     private MeshRenderer meshRenderer;
     private MeshFilter meshFilter;
     List<Vector3> vertices = new List<Vector3>();
@@ -43,7 +44,6 @@ public class Chunk
                         Vector3Int blockInWorldPosition = new Vector3Int(x + xChunkPos, y, z + zChunkPos);
                         Vector3Int blockInLocalPosition = new Vector3Int(x, y, z);
                         DrawBlock(blockInWorldPosition, blockInLocalPosition, maxHeight, xChunkPos, zChunkPos);
-
                     }
                     else break;
                 }
@@ -73,21 +73,25 @@ public class Chunk
         {
             if (i == 0)
             {
+                //World.Instance.GetChunkUsingGlobalPos(globalPos.x, globalPos.z - 1);            //if not exist error occurs and returns true
                 if (World.Instance.GetBlock(globalPos.x, globalPos.y, globalPos.z - 1) == 1)
                     return false;
             }
             if (i == 1)
             {
+                //World.Instance.GetChunkUsingGlobalPos(globalPos.x + 1, globalPos.z);
                 if (World.Instance.GetBlock(globalPos.x + 1, globalPos.y, globalPos.z) == 1)
                     return false;
             }
             if (i == 2)
             {
+                //World.Instance.GetChunkUsingGlobalPos(globalPos.x, globalPos.z + 1);
                 if (World.Instance.GetBlock(globalPos.x, globalPos.y, globalPos.z + 1) == 1)
                     return false;
             }
             if (i == 3)
             {
+                //World.Instance.GetChunkUsingGlobalPos(globalPos.x - 1, globalPos.z);
                 if (World.Instance.GetBlock(globalPos.x - 1, globalPos.y, globalPos.z) == 1)
                     return false;
             }
@@ -106,12 +110,14 @@ public class Chunk
         {
             return true;
         }
-        catch(NullReferenceException)
+        catch (NullReferenceException)
         {
             return true;
         }
         return true;
     }
+
+
     private Vector2 GetVectorUV(Vector2 offsetUV)
     {
         int Index = 2;
@@ -132,6 +138,7 @@ public class Chunk
         mesh.RecalculateNormals();
 
         meshFilter.mesh = mesh;
+
     }
 }
 
