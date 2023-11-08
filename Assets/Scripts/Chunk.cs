@@ -17,33 +17,48 @@ public class Chunk
     List<int> triangle = new List<int>();
     List<Vector2> uv = new List<Vector2>();
     int triangleIndex = 0;
+    int xChunkGlobalPos;
+    int zChunkGlobalPos;
+
 
     public Chunk(int xChunkGlobalPos,int zChunkGlobalPos, Transform parent, World world)
     {
+        this.xChunkGlobalPos = xChunkGlobalPos;
+        this.zChunkGlobalPos = zChunkGlobalPos;
         width = world.GetChunkWidth();
         gameObject = new GameObject();
         gameObject.transform.SetParent(parent);
         meshRenderer = gameObject.AddComponent<MeshRenderer>();
         meshFilter = gameObject.AddComponent<MeshFilter>();
-        GenerateBiome(world, xChunkGlobalPos, zChunkGlobalPos);
-        CreateMesh();
         meshRenderer.material = world.material;
     }
 
-    private void GenerateBiome(World world,int xChunkPos, int zChunkPos)
+    public void VisualizeChunk(World world)
     {
-
+        GenerateBiome(world);
+        CreateMesh();
+        ClearLists();
+    }
+    private void ClearLists()
+    {
+        vertices.Clear();
+        triangle.Clear();
+        uv.Clear();
+        triangleIndex = 0;
+    }
+    private void GenerateBiome(World world)
+    {
+        int maxHeight = world.GetMaxChunkHeight();
         for (int x = 0; x < width; x++)
             for (int z = 0; z < width; z++)
             {
-                int maxHeight = world.GetMaxChunkHeight();
                 for (int y = 0; y < maxHeight; y++)
                 {
-                    if (world.GetBlock(xChunkPos + x, y,zChunkPos + z) == 1)
+                    if (world.GetBlock(xChunkGlobalPos + x, y,zChunkGlobalPos + z) == 1)
                     {
-                        Vector3Int blockInWorldPosition = new Vector3Int(x + xChunkPos, y, z + zChunkPos);
+                        Vector3Int blockInWorldPosition = new Vector3Int(x + xChunkGlobalPos, y, z + zChunkGlobalPos);
                         Vector3Int blockInLocalPosition = new Vector3Int(x, y, z);
-                        DrawBlock(blockInWorldPosition, blockInLocalPosition, maxHeight, xChunkPos, zChunkPos);
+                        DrawBlock(blockInWorldPosition, blockInLocalPosition, maxHeight, xChunkGlobalPos, zChunkGlobalPos);
                     }
                     else break;
                 }
@@ -73,25 +88,29 @@ public class Chunk
         {
             if (i == 0)
             {
-                //World.Instance.GetChunkUsingGlobalPos(globalPos.x, globalPos.z - 1);            //if not exist error occurs and returns true
+                if (!World.Instance.IsChunkUsingGlobalPos(globalPos.x, globalPos.z - 1))
+                    return true;
                 if (World.Instance.GetBlock(globalPos.x, globalPos.y, globalPos.z - 1) == 1)
                     return false;
             }
             if (i == 1)
             {
-                //World.Instance.GetChunkUsingGlobalPos(globalPos.x + 1, globalPos.z);
+                if(!World.Instance.IsChunkUsingGlobalPos(globalPos.x + 1, globalPos.z))
+                    return true;
                 if (World.Instance.GetBlock(globalPos.x + 1, globalPos.y, globalPos.z) == 1)
                     return false;
             }
             if (i == 2)
             {
-                //World.Instance.GetChunkUsingGlobalPos(globalPos.x, globalPos.z + 1);
+                if(!World.Instance.IsChunkUsingGlobalPos(globalPos.x, globalPos.z + 1))
+                    return true;
                 if (World.Instance.GetBlock(globalPos.x, globalPos.y, globalPos.z + 1) == 1)
                     return false;
             }
             if (i == 3)
             {
-                //World.Instance.GetChunkUsingGlobalPos(globalPos.x - 1, globalPos.z);
+                if (!World.Instance.IsChunkUsingGlobalPos(globalPos.x - 1, globalPos.z))
+                    return true;
                 if (World.Instance.GetBlock(globalPos.x - 1, globalPos.y, globalPos.z) == 1)
                     return false;
             }

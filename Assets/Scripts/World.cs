@@ -21,6 +21,7 @@ public class World : MonoBehaviour
 
     private ArrayList chunkList = new ArrayList();
     private ArrayList blockList = new ArrayList();
+    private List<Chunk> chunksToVisualizeList = new List<Chunk>();
 
     [SerializeField] private Transform playerTransform;
 
@@ -33,27 +34,45 @@ public class World : MonoBehaviour
     }
     private void Start()
     {
-        CreateArrayOfBlocks();
-        for (int x = 0; x < numberOfChunksInLine; x++)
-        {
-            chunkList.Add(new ArrayList());
-            for (int z = 0; z < numberOfChunksInLine; z++)
-            {
-                ((ArrayList)chunkList[x]).Add(new Chunk(chunkWidth * x, chunkWidth * z, transform, this));
-            }
-        }
+        int initialWordLenght = 2 * numberOfChunksInLine - 1;
+        CreateArrayOfBlocks(initialWordLenght);
+        MakeInitialBlockList(initialWordLenght);
+        MakeFirstChunksVisible(initialWordLenght);
     }
 
     private void Update()
     {
+        
         Vector3 playerPos = playerTransform.position;
         Vector3Int playerPosInChunkCoord = PlayerPosInChunkCoord((int)playerPos.x, (int)playerPos.z);
 
         UpdateWorld(playerPosInChunkCoord.x, playerPosInChunkCoord.z, AddNewBlocksToArray);
         UpdateWorld(playerPosInChunkCoord.x, playerPosInChunkCoord.z, PrepareChunkListAndAddNewChunk);
-        DeleteChunksOutOfPlayerVisibility(playerPosInChunkCoord.x, playerPosInChunkCoord.z);
+        UpdateChunks(playerPosInChunkCoord.x, playerPosInChunkCoord.z);
     }
 
+    private void MakeFirstChunksVisible(int initialWordLenght)
+    {
+        for (int x = 0; x < initialWordLenght; x++)
+        {
+            chunkList.Add(new ArrayList());
+            for (int z = 0; z < initialWordLenght; z++)
+            {
+                ((Chunk)((ArrayList)chunkList[x])[z]).VisualizeChunk(this);
+            }
+        }
+    }
+    private void MakeInitialBlockList(int initialWordLenght)
+    {
+        for (int x = 0; x < initialWordLenght; x++)
+        {
+            chunkList.Add(new ArrayList());
+            for (int z = 0; z < initialWordLenght; z++)
+            {
+                ((ArrayList)chunkList[x]).Add(new Chunk(chunkWidth * x, chunkWidth * z, transform, this));
+            }
+        }
+    }
     private void AddNewBlocksToArray(int xChunkPos, int zChunkPos)
     {
         int blockGlobalXPosition = xChunkPos * chunkWidth;
@@ -85,6 +104,19 @@ public class World : MonoBehaviour
             return false; 
         }
     }
+    public bool IsChunkUsingGlobalPos(int xGlobalPos, int zGlobalPos)
+    {
+        int xChunkPos = xGlobalPos / 6;
+        int zChunkPos = zGlobalPos / 6;
+        try
+        {
+            return (Chunk)((ArrayList)chunkList[xChunkPos])[zChunkPos] != null;
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return false;
+        }
+    }
     private Vector3Int PlayerPosInChunkCoord(int xPlayerPos, int zPlayerPos)
     {
         int xChunkPos = xPlayerPos / chunkWidth;
@@ -106,12 +138,12 @@ public class World : MonoBehaviour
         return (int)((ArrayList)((ArrayList)blockList[xGlobal])[zGlobal])[yGlobal];
 
     }
-    private void CreateArrayOfBlocks()
+    private void CreateArrayOfBlocks(int initialWorldLength)
     {
-        for (int x = 0; x < numberOfChunksInLine * chunkWidth; x++) {
+        for (int x = 0; x < initialWorldLength * chunkWidth; x++) {
             blockList.Add(new ArrayList());
 
-            for (int z = 0; z < numberOfChunksInLine * chunkWidth; z++)
+            for (int z = 0; z < initialWorldLength * chunkWidth; z++)
             {
                 ((ArrayList)blockList[x]).Add(new ArrayList());
                 int max;
@@ -200,6 +232,8 @@ public class World : MonoBehaviour
                 ((ArrayList)chunkList[xChunkPos]).Add(null);
         }
         ((ArrayList)chunkList[xChunkPos])[zChunkPos] = new Chunk(xChunkPos * chunkWidth, zChunkPos * chunkWidth, transform, this);
+        Chunk chunk = (Chunk)((ArrayList)chunkList[xChunkPos])[zChunkPos];
+        chunksToVisualizeList.Add(chunk);
     }
 
     private void UpdateWorld(int xChunkPos, int zChunkPos, Function function)
@@ -231,32 +265,73 @@ public class World : MonoBehaviour
         }
     }
 
-    private void DeleteChunksOutOfPlayerVisibility(int xChunkPos, int zChunkPos)
+    private void VisualizeNewChunks()
     {
-        int playerVibility = playerVisibilityIn1Direction;
+        if (chunksToVisualizeList.Count > 0)
+        {
+            foreach (Chunk chunk in chunksToVisualizeList)
+            {
+                chunk.VisualizeChunk(this);
+            }
+            chunksToVisualizeList.Clear();
+        }
+    }
+    private void UpdateChunks(int xChunkPos, int zChunkPos)
+    {
+        VisualizeNewChunks();
+        int playerVisibility = playerVisibilityIn1Direction;
         for (int i = -4; i < numberOfChunksInLine; i++)
         {
-            if (xChunkPos - playerVibility >= 0)
+            if (xChunkPos - playerVisibility >= 0) // if move right
             {
-                if (IsChunk(xChunkPos - playerVibility, zChunkPos + i) && zChunkPos + i >= 0)
+                if (IsChunk(xChunkPos - playerVisibility, zChunkPos + i) && zChunkPos + i >= 0)
                 {
-                    DestroyChunk(xChunkPos - playerVibility, zChunkPos + i);
+
+                    DestroyChunk(xChunkPos - playerVisibility, zChunkPos + i); //after desrtoying old chunks changeVisual active chunks
+
+                    int lastVisibleBlockXCoord = xChunkPos - playerVisibility + 1;
+                    ((Chunk)((ArrayList)chunkList[lastVisibleBlockXCoord])[zChunkPos + i]).VisualizeChunk(this);
+                    int secondRawAfterAddNewChunks = xChunkPos + playerVisibility - 2;
+                    ((Chunk)((ArrayList)chunkList[secondRawAfterAddNewChunks])[zChunkPos + i]).VisualizeChunk(this);
+
                 }
             }
-            if (zChunkPos - playerVibility >= 0)
+
+            if (zChunkPos - playerVisibility >= 0) 
             {
-                if (IsChunk(xChunkPos + i, zChunkPos - playerVibility) && xChunkPos + i >= 0)
+                if (IsChunk(xChunkPos + i, zChunkPos - playerVisibility) && xChunkPos + i >= 0) // if move forward
                 {
-                    DestroyChunk(xChunkPos + i, zChunkPos - playerVibility);
+                    DestroyChunk(xChunkPos + i, zChunkPos - playerVisibility);
+                    int lastVisibleBlockZCoord = zChunkPos - playerVisibility + 1;
+                    ((Chunk)((ArrayList)chunkList[xChunkPos + i])[lastVisibleBlockZCoord]).VisualizeChunk(this);
+                    int secondRawAfterAddNewChunks = zChunkPos + playerVisibility - 2;
+                    ((Chunk)((ArrayList)chunkList[xChunkPos + i])[secondRawAfterAddNewChunks]).VisualizeChunk(this);
                 }
             }
-            if (IsChunk(xChunkPos + playerVibility, zChunkPos + i) && zChunkPos + i >= 0)
+
+            if (IsChunk(xChunkPos + playerVisibility, zChunkPos + i) && zChunkPos + i >= 0) // if move left
             {
-                DestroyChunk(xChunkPos + playerVibility, zChunkPos + i);
+                DestroyChunk(xChunkPos + playerVisibility, zChunkPos + i);
+                int lastVisibleBlockXCoord = xChunkPos + playerVisibility - 1;
+                ((Chunk)((ArrayList)chunkList[lastVisibleBlockXCoord])[zChunkPos + i]).VisualizeChunk(this);
+                if (xChunkPos - playerVisibility + 2 >= 0)
+                {
+                    int secondRawAfterAddNewChunks = xChunkPos - playerVisibility + 2;
+                    ((Chunk)((ArrayList)chunkList[secondRawAfterAddNewChunks])[zChunkPos + i]).VisualizeChunk(this);
+                }
+                    
             }
-            if (IsChunk(xChunkPos + i, zChunkPos + playerVibility) && xChunkPos + i >= 0)
+
+            if (IsChunk(xChunkPos + i, zChunkPos + playerVisibility) && xChunkPos + i >= 0) // if move down
             {
-                DestroyChunk(xChunkPos + i, zChunkPos + playerVibility);
+                DestroyChunk(xChunkPos + i, zChunkPos + playerVisibility);
+                int lastVisibleBlockZCoord = zChunkPos + playerVisibility - 1;
+                ((Chunk)((ArrayList)chunkList[xChunkPos + i])[lastVisibleBlockZCoord]).VisualizeChunk(this);
+                if (zChunkPos - playerVisibility + 2 >= 0)
+                {
+                    int secondRawAfterAddNewChunks = zChunkPos - playerVisibility + 2;
+                    ((Chunk)((ArrayList)chunkList[xChunkPos + i])[secondRawAfterAddNewChunks]).VisualizeChunk(this);
+                }
             }
         }
     }
@@ -265,9 +340,5 @@ public class World : MonoBehaviour
     {
         Destroy(((Chunk)((ArrayList)chunkList[xChunkPos])[zChunkPos]).gameObject);
         ((ArrayList)chunkList[xChunkPos])[zChunkPos] = null;
-    }
-    private void UpdateActiveChunks()
-    {
-
     }
 }
