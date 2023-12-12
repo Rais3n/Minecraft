@@ -54,33 +54,18 @@ public class Chunk
             {
                 for (int y = 0; y < maxHeight; y++)
                 {
-                    if (world.GetBlock(xChunkGlobalPos + x, y,zChunkGlobalPos + z) == 1)
+                    int kindOfBlock = world.GetBlock(xChunkGlobalPos + x, y, zChunkGlobalPos + z);
+                    if (kindOfBlock != BlockData.kindOfBlock["none"]) 
                     {
                         Vector3Int blockInWorldPosition = new Vector3Int(x + xChunkGlobalPos, y, z + zChunkGlobalPos);
                         Vector3Int blockInLocalPosition = new Vector3Int(x, y, z);
-                        DrawBlock(blockInWorldPosition, blockInLocalPosition, maxHeight, xChunkGlobalPos, zChunkGlobalPos);
+                        DrawBlock(blockInWorldPosition, blockInLocalPosition, maxHeight, xChunkGlobalPos, zChunkGlobalPos, kindOfBlock);
                     }
                     else break;
                 }
             }
     }
-    private void DrawBlock(Vector3Int blockInWorldPosition, Vector3Int blockInLocalPosition, int maxHeight, int xChunkPos, int zChunkPos)
-    {
-        for (int i = 0; i < 6; i++)
-        {
-            if (!DrawWall(i,blockInWorldPosition, maxHeight))
-                continue;
-            for (int j = 0; j < 6; j++)
-            {
-                int vertexIndex = BlockData.triangles[i, j];
-                Vector2 vectorUV = BlockData.uv[j];
-                uv.Add(GetVectorUV(vectorUV));
-                vertices.Add(BlockData.vertex[vertexIndex] + blockInWorldPosition);
-                triangle.Add(triangleIndex);
-                triangleIndex++;
-            }
-        }
-    }
+    
     
     private bool DrawWall(int i, Vector3Int globalPos,int maxHeight)
     {
@@ -90,38 +75,38 @@ public class Chunk
             {
                 if (!World.Instance.IsChunkUsingGlobalPos(globalPos.x, globalPos.z - 1))
                     return true;
-                if (World.Instance.GetBlock(globalPos.x, globalPos.y, globalPos.z - 1) == 1)
+                if (World.Instance.GetBlock(globalPos.x, globalPos.y, globalPos.z - 1) != BlockData.kindOfBlock["none"])
                     return false;
             }
             if (i == 1)
             {
                 if(!World.Instance.IsChunkUsingGlobalPos(globalPos.x + 1, globalPos.z))
                     return true;
-                if (World.Instance.GetBlock(globalPos.x + 1, globalPos.y, globalPos.z) == 1)
+                if (World.Instance.GetBlock(globalPos.x + 1, globalPos.y, globalPos.z) != BlockData.kindOfBlock["none"])
                     return false;
             }
             if (i == 2)
             {
                 if(!World.Instance.IsChunkUsingGlobalPos(globalPos.x, globalPos.z + 1))
                     return true;
-                if (World.Instance.GetBlock(globalPos.x, globalPos.y, globalPos.z + 1) == 1)
+                if (World.Instance.GetBlock(globalPos.x, globalPos.y, globalPos.z + 1) != BlockData.kindOfBlock["none"])
                     return false;
             }
             if (i == 3)
             {
                 if (!World.Instance.IsChunkUsingGlobalPos(globalPos.x - 1, globalPos.z))
                     return true;
-                if (World.Instance.GetBlock(globalPos.x - 1, globalPos.y, globalPos.z) == 1)
+                if (World.Instance.GetBlock(globalPos.x - 1, globalPos.y, globalPos.z) != BlockData.kindOfBlock["none"])
                     return false;
             }
             if (i == 4)
             {
-                if (World.Instance.GetBlock(globalPos.x, globalPos.y + 1, globalPos.z) == 1)
+                if (World.Instance.GetBlock(globalPos.x, globalPos.y + 1, globalPos.z) != BlockData.kindOfBlock["none"])
                     return false;
             }
             if (i == 5)
             {
-                if (World.Instance.GetBlock(globalPos.x, globalPos.y - 1, globalPos.z) == 1)
+                if (World.Instance.GetBlock(globalPos.x, globalPos.y - 1, globalPos.z) != BlockData.kindOfBlock["none"])
                     return false;
             }
         }
@@ -136,16 +121,47 @@ public class Chunk
         return true;
     }
 
-
-    private Vector2 GetVectorUV(Vector2 offsetUV)
+    private void DrawBlock(Vector3Int blockInWorldPosition, Vector3Int blockInLocalPosition, int maxHeight, int xChunkPos, int zChunkPos, int kindOfBlock)
     {
-        int Index = 2;
+        for (int i = 0; i < 6; i++)
+        {
+            if (!DrawWall(i, blockInWorldPosition, maxHeight))
+                continue;
+            for (int wall = 0; wall < 6; wall++)
+            {
+                int vertexIndex = BlockData.triangles[i, wall];
+                Vector2 vectorUV = BlockData.uv[wall];
+                uv.Add(GetVectorUV(vectorUV, wall, kindOfBlock));
+                vertices.Add(BlockData.vertex[vertexIndex] + blockInWorldPosition);
+                triangle.Add(triangleIndex);
+                triangleIndex++;
+            }
+        }
+    }
+    private Vector2 GetVectorUV(Vector2 offsetUV, int wall, int kindOfWall)
+    {
+        int blockTextureIndex=GetBlockID(kindOfWall);
+
         int textureWidth = 256;
-        int numOfTextureInLine = 16;
-        float coordX = (float)(Index % numOfTextureInLine*numOfTextureInLine)/textureWidth;
-        float coordY = (float)(240 - Index / numOfTextureInLine * numOfTextureInLine)/textureWidth;
-        Vector2 uv = new Vector2(coordX, coordY) + offsetUV/numOfTextureInLine;
+        int TextureInLine = 16;
+        float coordX = (float)(blockTextureIndex % TextureInLine*TextureInLine)/textureWidth;
+        float coordY = (float)(240 - blockTextureIndex / TextureInLine * TextureInLine)/textureWidth;
+        Vector2 uv = new Vector2(coordX, coordY) + offsetUV/TextureInLine;
         return uv;
+    }
+
+    private int GetBlockID(int kindOfWall)
+    {
+        int blockTextureIndex;
+        if (kindOfWall == BlockData.kindOfBlock["stone"])
+            blockTextureIndex = 1;
+        else if (kindOfWall == BlockData.kindOfBlock["dirt"])
+            blockTextureIndex = 2;
+        else
+            blockTextureIndex = 17;
+
+        return blockTextureIndex;
+
     }
     private void CreateMesh()
     {

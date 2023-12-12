@@ -4,6 +4,16 @@ using UnityEngine;
 
 public static class BlockData
 {
+
+    public static readonly Dictionary<string, int> kindOfBlock = new Dictionary<string, int>()
+    {
+        {"none",0 },
+        {"bedrock",1},
+        {"dirt",2},
+        {"stone",3},
+        {"cobbelstone",4}
+    };
+
     public static readonly Vector3[] vertex = new Vector3[8]
     {
         new Vector3(0,0,0),
@@ -35,6 +45,5 @@ public static class BlockData
         new Vector2(1.0f,0.0f),
         new Vector2(0.0f,1.0f),
         new Vector2(1.0f,1.0f),
- 
     };
 }

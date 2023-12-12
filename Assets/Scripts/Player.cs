@@ -30,17 +30,16 @@ public class Player : MonoBehaviour
     }
     private void CheckIfGrounded()
     {
-        int dirt = 1;
         int x = (int)transform.position.x;
         int y = (int)transform.position.y;
         int z = (int)transform.position.z;
-        if (CalculateWhichBlock(x,y,z) == dirt)
+        if (GetBlock(x,y,z) != BlockData.kindOfBlock["none"])
         {
             isGrounded = true;
         }
         else isGrounded = false;
     }
-    private int CalculateWhichBlock(int x, int y, int z)
+    private int GetBlock(int x, int y, int z)
     {
         
         return World.Instance.GetTheBlockWithCoords(x,y,z);
@@ -74,8 +73,7 @@ public class Player : MonoBehaviour
         Vector3 moveVelocity = moveDirection.normalized;
 
         Vector3 v = transform.position + moveVelocity/1.4f ;
-        int dirt = 1;
-        if(CalculateWhichBlock((int)v.x, (int)v.y + 1, (int)v.z) != dirt)
+        if(GetBlock((int)v.x, (int)v.y + 1, (int)v.z) == BlockData.kindOfBlock["none"])
         characterController.Move(moveVelocity*speed*Time.deltaTime);
 
         head.rotation = savedOrientation;

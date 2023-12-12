@@ -11,11 +11,18 @@ public class World : MonoBehaviour
     public static World Instance { get; private set; }
 
     public Material material;
-    private float offsetX;
-    private float offsetY;
+    //private float offsetX;
+    //private float offsetY;
+
+    //private float offsetXtemperature;
+    //private float offsetZtemperature;
+
+    //private float offsetXhumadity;
+    //private float offsetZhumadity;
+
     private int chunkWidth=6;
-    private float scale=10f;
-    private int chunkMaxHeight = 15;
+    //private float scale=3f;
+    private int chunkMaxHeight = 60;
     private int numberOfChunksInLine = 5;
     private int playerVisibilityIn1Direction;
 
@@ -25,21 +32,22 @@ public class World : MonoBehaviour
 
     [SerializeField] private Transform playerTransform;
 
-    public void Awake()
+    private void Awake()
     {
         Instance = this;
         playerVisibilityIn1Direction = numberOfChunksInLine;
-        offsetX = Random.Range(0f, 99999f);
-        offsetY = Random.Range(0f, 99999f);
+        //offsetX = Random.Range(0f, 99999f);
+        //offsetY = Random.Range(0f, 99999f);
+
+        SetBiomeParametres();
     }
     private void Start()
     {
         int initialWordLenght = 2 * numberOfChunksInLine - 1;
         CreateArrayOfBlocks(initialWordLenght);
         MakeInitialBlockList(initialWordLenght);
-        MakeFirstChunksVisible(initialWordLenght);
+        MakeFirstChunks(initialWordLenght);
     }
-
     private void Update()
     {
         
@@ -51,7 +59,7 @@ public class World : MonoBehaviour
         UpdateChunks(playerPosInChunkCoord.x, playerPosInChunkCoord.z);
     }
 
-    private void MakeFirstChunksVisible(int initialWordLenght)
+    private void MakeFirstChunks(int initialWordLenght)
     {
         for (int x = 0; x < initialWordLenght; x++)
         {
@@ -85,9 +93,28 @@ public class World : MonoBehaviour
             {
                 MakeNewListInZDimensionIfNotExist(blockGlobalXPosition + localOffsetX, blockGlobalZPosition + localOffsetZ);
                 int max;
-                max = GenerateHeight(blockGlobalXPosition + localOffsetX, blockGlobalZPosition + localOffsetZ);
+                //max = GenerateHeight(blockGlobalXPosition + localOffsetX, blockGlobalZPosition + localOffsetZ);
+                max = Biome.Height(blockGlobalXPosition + localOffsetX, blockGlobalZPosition + localOffsetZ);
 
-                SetStartingBlocksInArrayInYDimension(max, blockGlobalXPosition + localOffsetX, blockGlobalZPosition + localOffsetZ);
+                SetBlocksInArrayInYDimension(max, blockGlobalXPosition + localOffsetX, blockGlobalZPosition + localOffsetZ);
+            }
+        }
+    }
+
+    private void CreateArrayOfBlocks(int initialWorldLength)
+    {
+        for (int x = 0; x < initialWorldLength * chunkWidth; x++)
+        {
+            blockList.Add(new ArrayList());
+
+            for (int z = 0; z < initialWorldLength * chunkWidth; z++)
+            {
+                ((ArrayList)blockList[x]).Add(new ArrayList());
+                int max;
+                //max = GenerateHeight(x, z);
+                max = Biome.Height(x,z);
+                //Debug.Log(max);
+                SetBlocksInArrayInYDimension(max, x, z);
             }
         }
     }
@@ -138,31 +165,6 @@ public class World : MonoBehaviour
         return (int)((ArrayList)((ArrayList)blockList[xGlobal])[zGlobal])[yGlobal];
 
     }
-    private void CreateArrayOfBlocks(int initialWorldLength)
-    {
-        for (int x = 0; x < initialWorldLength * chunkWidth; x++) {
-            blockList.Add(new ArrayList());
-
-            for (int z = 0; z < initialWorldLength * chunkWidth; z++)
-            {
-                ((ArrayList)blockList[x]).Add(new ArrayList());
-                int max;
-                max = GenerateHeight(x, z);
-                SetStartingBlocksInArrayInYDimension(max,x,z);
-            }
-        }
-    }
-    private int GenerateHeight(int x, int z)
-    {
-        int height;
-
-        float coordX = x / 256f * scale + offsetX;
-        float coordZ = z / 256f * scale + offsetY;
-        float calculatedHeight = Mathf.PerlinNoise(coordX, coordZ);
-        height = (int)(calculatedHeight * chunkMaxHeight);
-
-        return height;
-    }
     public int GetChunkWidth()
     {
         return chunkWidth;
@@ -171,20 +173,24 @@ public class World : MonoBehaviour
     {
         return chunkMaxHeight;
     }
-
-    private void SetStartingBlocksInArrayInYDimension(int heightOfTerrain, int xIndexArrayList, int zIndexArrayList)
+    private void SetBlocksInArrayInYDimension(int heightOfTerrain, int xIndexArrayList, int zIndexArrayList)
     {
-        if (((ArrayList)((ArrayList)blockList[xIndexArrayList])[zIndexArrayList]).Count < chunkMaxHeight)
+        if (AreSetBlocks(xIndexArrayList, zIndexArrayList))
         {
             for (int y = 0; y < heightOfTerrain; y++)
             {
-                ((ArrayList)((ArrayList)blockList[xIndexArrayList])[zIndexArrayList]).Add(1);
+                ((ArrayList)((ArrayList)blockList[xIndexArrayList])[zIndexArrayList]).Add(BlockData.kindOfBlock["stone"]);
             }
             for (int y = heightOfTerrain; y < chunkMaxHeight + 1; y++)
             {
-                ((ArrayList)((ArrayList)blockList[xIndexArrayList])[zIndexArrayList]).Add(0);
+                ((ArrayList)((ArrayList)blockList[xIndexArrayList])[zIndexArrayList]).Add(BlockData.kindOfBlock["none"]);
             }
         }
+    }
+
+    private bool AreSetBlocks(int xIndexArrayList, int zIndexArrayList)
+    {
+        return ((ArrayList)((ArrayList)blockList[xIndexArrayList])[zIndexArrayList]).Count < chunkMaxHeight;
     }
 
     private void MakeNewListInZDimensionIfNotExist(int xIndex, int zIndex)
@@ -340,5 +346,13 @@ public class World : MonoBehaviour
     {
         Destroy(((Chunk)((ArrayList)chunkList[xChunkPos])[zChunkPos]).gameObject);
         ((ArrayList)chunkList[xChunkPos])[zChunkPos] = null;
+    }
+
+    private void SetBiomeParametres()
+    {
+        Biome.offsetXhumadity = Random.Range(0f, 99999f);
+        Biome.offsetZhumadity = Random.Range(0f, 99999f);
+        Biome.offsetXtemperature = Random.Range(0f, 99999f);
+        Biome.offsetZtemperature = Random.Range(0f, 99999f);
     }
 }
