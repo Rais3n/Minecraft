@@ -11,17 +11,8 @@ public class World : MonoBehaviour
     public static World Instance { get; private set; }
 
     public Material material;
-    //private float offsetX;
-    //private float offsetY;
-
-    //private float offsetXtemperature;
-    //private float offsetZtemperature;
-
-    //private float offsetXhumadity;
-    //private float offsetZhumadity;
 
     private int chunkWidth=6;
-    //private float scale=3f;
     private int chunkMaxHeight = 60;
     private int numberOfChunksInLine = 5;
     private int playerVisibilityIn1Direction;
@@ -36,8 +27,6 @@ public class World : MonoBehaviour
     {
         Instance = this;
         playerVisibilityIn1Direction = numberOfChunksInLine;
-        //offsetX = Random.Range(0f, 99999f);
-        //offsetY = Random.Range(0f, 99999f);
 
         SetBiomeParametres();
     }
