@@ -19,7 +19,7 @@ public class Biome
         {
         "low", new Dictionary<string, int>
             {
-                {AMPLITUDE, 8},
+                {AMPLITUDE, 2},
                 {FREQUENCY, 32},
                 {OCTAVES, 2}
             }
@@ -27,7 +27,7 @@ public class Biome
         {
         "mid", new Dictionary<string, int>
             {
-                {AMPLITUDE, 16},
+                {AMPLITUDE, 6},
                 {FREQUENCY, 10},
                 {OCTAVES, 2}
             }
@@ -35,7 +35,7 @@ public class Biome
         {
         "mid-high", new Dictionary<string, int> 
             {
-                {AMPLITUDE, 32},
+                {AMPLITUDE, 24},
                 {FREQUENCY, 8},
                 {OCTAVES, 3}
             }
@@ -43,7 +43,7 @@ public class Biome
         {
         "high", new Dictionary<string, int>
             {
-                {AMPLITUDE, 64},
+                {AMPLITUDE, 48},
                 {FREQUENCY, 4},
                 {OCTAVES, 4}
             }
@@ -90,12 +90,11 @@ public class Biome
         else return "mountain"; // change to water later,
     }
 
-    public static int Height(float x, float z)
+    public static int Height(float x, float z, out string biomeInBlock)
     {
         float temperature = GenerateTemperatureParameter(x, z);
         float moisture = GenerateMoistureParameter(x, z);
-        string biomeInBlock = GetBiome(moisture, temperature);
-        Debug.Log(biomeInBlock);
+        biomeInBlock = GetBiome(moisture, temperature);
         const float lacunarity = 2f;
         const float persistence = 0.5f;
         float value;
@@ -143,7 +142,7 @@ public class Biome
     {
         if(Between(moisture, 0f, 0.3f))
         {
-            weight[0] = (1f - moisture/0.3f)/2f;
+            weight[0] = 1f - moisture/0.3f/2f;
             weight[1] = 1f - weight[0];
         }
         else if(Between(moisture, 0.3f, 0.5f))

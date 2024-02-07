@@ -8,10 +8,13 @@ public static class BlockData
     public static readonly Dictionary<string, int> kindOfBlock = new Dictionary<string, int>()
     {
         {"none",0 },
-        {"bedrock",1},
+        {"greenDirt",1},
         {"dirt",2},
         {"stone",3},
-        {"cobbelstone",4}
+        {"cobbelstone",4},
+        {"sand",5},
+        {"dirt-snow", 6},
+        {"leaves", 7},
     };
 
     public static readonly Vector3[] vertex = new Vector3[8]

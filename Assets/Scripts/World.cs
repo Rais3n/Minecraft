@@ -1,9 +1,11 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using Unity.VisualScripting;
 using UnityEngine;
 using Random = UnityEngine.Random;
+
 
 public class World : MonoBehaviour
 {
@@ -13,41 +15,47 @@ public class World : MonoBehaviour
     public Material material;
 
     private int chunkWidth=6;
-    private int chunkMaxHeight = 60;
-    private int numberOfChunksInLine = 5;
-    private int playerVisibilityIn1Direction;
+    private int maxGeneratedHeight = 60;
+    private int playerVisibilityIn1Direction = 10;
+    private int mapChunkLength;
+    private Vector3Int previousPlayerChunkPos;
 
     private ArrayList chunkList = new ArrayList();
     private ArrayList blockList = new ArrayList();
     private List<Chunk> chunksToVisualizeList = new List<Chunk>();
-
-    [SerializeField] private Transform playerTransform;
+    private List<Chunk> chunksToUpdateList = new List<Chunk>();
+    private bool isWorking = false;
 
     private void Awake()
     {
         Instance = this;
-        playerVisibilityIn1Direction = numberOfChunksInLine;
-
         SetBiomeParametres();
     }
     private void Start()
     {
-        int initialWordLenght = 2 * numberOfChunksInLine - 1;
+        int initialWordLenght = 2 * playerVisibilityIn1Direction - 1;
+        mapChunkLength = 2 * playerVisibilityIn1Direction - 1;
         CreateArrayOfBlocks(initialWordLenght);
-        MakeInitialBlockList(initialWordLenght);
+        MakeInitialChunkList(initialWordLenght);
         MakeFirstChunks(initialWordLenght);
+        
     }
     private void Update()
     {
-        
-        Vector3 playerPos = playerTransform.position;
-        Vector3Int playerPosInChunkCoord = PlayerPosInChunkCoord((int)playerPos.x, (int)playerPos.z);
+        Vector3 playerPos = Player.Instance.GetPlayerGlobalPos();
+        Vector3Int playerPosInChunkCoord = PlayerPosInChunkCoord((int)playerPos.x, (int)playerPos.z);  
+        if (!isWorking && playerPosInChunkCoord != previousPlayerChunkPos)
+        {
+            if ( Math.Abs(playerPosInChunkCoord.x - previousPlayerChunkPos.x) == 1 && Math.Abs(playerPosInChunkCoord.z - previousPlayerChunkPos.z) == 1)
+            {
+                playerPosInChunkCoord.x = previousPlayerChunkPos.x;                                     //this line is needed to avoid error
+            }
+            Test(playerPosInChunkCoord.x, playerPosInChunkCoord.z);
 
-        UpdateWorld(playerPosInChunkCoord.x, playerPosInChunkCoord.z, AddNewBlocksToArray);
-        UpdateWorld(playerPosInChunkCoord.x, playerPosInChunkCoord.z, PrepareChunkListAndAddNewChunk);
-        UpdateChunks(playerPosInChunkCoord.x, playerPosInChunkCoord.z);
+            StartCoroutine("VisualizeChunks");
+            previousPlayerChunkPos = playerPosInChunkCoord;
+        }
     }
-
     private void MakeFirstChunks(int initialWordLenght)
     {
         for (int x = 0; x < initialWordLenght; x++)
@@ -55,39 +63,31 @@ public class World : MonoBehaviour
             chunkList.Add(new ArrayList());
             for (int z = 0; z < initialWordLenght; z++)
             {
-                ((Chunk)((ArrayList)chunkList[x])[z]).VisualizeChunk(this);
+                ((Chunk)((ArrayList)chunkList[x])[z]).VisualizeChunk();
             }
         }
     }
-    private void MakeInitialBlockList(int initialWordLenght)
+    private void MakeInitialChunkList(int initialWordLenght)
     {
         for (int x = 0; x < initialWordLenght; x++)
         {
             chunkList.Add(new ArrayList());
             for (int z = 0; z < initialWordLenght; z++)
             {
-                ((ArrayList)chunkList[x]).Add(new Chunk(chunkWidth * x, chunkWidth * z, transform, this));
+                ((ArrayList)chunkList[x]).Add(new Chunk(chunkWidth * x, chunkWidth * z, transform,x,z));
             }
         }
     }
-    private void AddNewBlocksToArray(int xChunkPos, int zChunkPos)
+
+    private void NewFunction(int xListPos, int zListPos, int xGlobalPos, int zGlobalPos)
     {
-        int blockGlobalXPosition = xChunkPos * chunkWidth;
-        int blockGlobalZPosition = zChunkPos * chunkWidth;
-        for (int localOffsetX = 0; localOffsetX < chunkWidth; localOffsetX++)
-        {
-            MakeNewListInXDimensionIfNotExist(blockGlobalXPosition + localOffsetX);
-
-            for (int localOffsetZ = 0; localOffsetZ < chunkWidth; localOffsetZ++)
+        int max;
+        for(int x = 0; x < chunkWidth;x++)
+            for(int z = 0; z < chunkWidth; z++)
             {
-                MakeNewListInZDimensionIfNotExist(blockGlobalXPosition + localOffsetX, blockGlobalZPosition + localOffsetZ);
-                int max;
-                //max = GenerateHeight(blockGlobalXPosition + localOffsetX, blockGlobalZPosition + localOffsetZ);
-                max = Biome.Height(blockGlobalXPosition + localOffsetX, blockGlobalZPosition + localOffsetZ);
-
-                SetBlocksInArrayInYDimension(max, blockGlobalXPosition + localOffsetX, blockGlobalZPosition + localOffsetZ);
+                max = Biome.Height(x + xGlobalPos, z + zGlobalPos,out string biome);
+                SetBlocksInBlockList(max, xListPos * chunkWidth + x, zListPos * chunkWidth + z, biome);
             }
-        }
     }
 
     private void CreateArrayOfBlocks(int initialWorldLength)
@@ -100,30 +100,15 @@ public class World : MonoBehaviour
             {
                 ((ArrayList)blockList[x]).Add(new ArrayList());
                 int max;
-                //max = GenerateHeight(x, z);
-                max = Biome.Height(x,z);
-                //Debug.Log(max);
-                SetBlocksInArrayInYDimension(max, x, z);
+                max = Biome.Height(x,z, out string biome);
+                SetBlocksInBlockList(max, x, z, biome);
             }
-        }
-    }
-
-
-    private bool IsChunk(int xChunkPos, int zChunkPos)
-    {
-        try
-        {
-            return (Chunk)((ArrayList)chunkList[xChunkPos])[zChunkPos] != null;
-        }
-        catch (ArgumentOutOfRangeException)
-        {
-            return false; 
         }
     }
     public bool IsChunkUsingGlobalPos(int xGlobalPos, int zGlobalPos)
     {
-        int xChunkPos = xGlobalPos / 6;
-        int zChunkPos = zGlobalPos / 6;
+        int xChunkPos = xGlobalPos / chunkWidth;
+        int zChunkPos = zGlobalPos / chunkWidth;
         try
         {
             return (Chunk)((ArrayList)chunkList[xChunkPos])[zChunkPos] != null;
@@ -160,181 +145,229 @@ public class World : MonoBehaviour
     }
     public int GetMaxChunkHeight()
     {
-        return chunkMaxHeight;
+        return maxGeneratedHeight;
     }
-    private void SetBlocksInArrayInYDimension(int heightOfTerrain, int xIndexArrayList, int zIndexArrayList)
+    private void SetBlocksInBlockList(int heightOfTerrain, int xIndexArrayList, int zIndexArrayList, string biome)
     {
-        if (AreSetBlocks(xIndexArrayList, zIndexArrayList))
-        {
-            for (int y = 0; y < heightOfTerrain; y++)
+            int biomeBlock = SetBlockIndexForBiome(biome);
+
+            for (int y = 0; y < heightOfTerrain - 1; y++)
             {
-                ((ArrayList)((ArrayList)blockList[xIndexArrayList])[zIndexArrayList]).Add(BlockData.kindOfBlock["stone"]);
+                ((ArrayList)((ArrayList)blockList[xIndexArrayList])[zIndexArrayList]).Add(biomeBlock);
             }
-            for (int y = heightOfTerrain; y < chunkMaxHeight + 1; y++)
+
+            if(biome == "plains-snow" || biome == "mountain-snow" || biome == "hill-snow" || biome == "taiga")
+                biomeBlock = BlockData.kindOfBlock["dirt-snow"];
+            else biomeBlock = BlockData.kindOfBlock["greenDirt"];
+
+        ((ArrayList)((ArrayList)blockList[xIndexArrayList])[zIndexArrayList]).Add(biomeBlock);
+
+            for (int y = heightOfTerrain; y < maxGeneratedHeight + 1; y++)
             {
                 ((ArrayList)((ArrayList)blockList[xIndexArrayList])[zIndexArrayList]).Add(BlockData.kindOfBlock["none"]);
             }
+    }
+
+    private int SetBlockIndexForBiome(string biome)
+    {
+        int blockIndex;
+        if (biome == "plains")
+            blockIndex = BlockData.kindOfBlock["dirt"];
+        else if (biome == "desert")
+            blockIndex = BlockData.kindOfBlock["sand"];
+        else
+            blockIndex = BlockData.kindOfBlock["dirt"];
+
+        return blockIndex;
+    }
+    private void Test(int xPlayerChunkPos, int zPlayerChunkPos)
+    {
+        int coefficient;
+        if (Math.Abs(zPlayerChunkPos - previousPlayerChunkPos.z) == 1)
+        {
+            coefficient = zPlayerChunkPos - previousPlayerChunkPos.z;
+            UpdateChunkList("z", coefficient, xPlayerChunkPos, zPlayerChunkPos);
+            UpdateBlockList("z", coefficient, xPlayerChunkPos, zPlayerChunkPos);
+        }
+        else if (Math.Abs(xPlayerChunkPos - previousPlayerChunkPos.x) == 1)
+        {
+            coefficient = xPlayerChunkPos - previousPlayerChunkPos.x;
+            UpdateChunkList("x", coefficient, xPlayerChunkPos, zPlayerChunkPos);
+            UpdateBlockList("x", coefficient, xPlayerChunkPos, zPlayerChunkPos);
         }
     }
-
-    private bool AreSetBlocks(int xIndexArrayList, int zIndexArrayList)
+    private void UpdateChunkList(string COORDINATE, int coefficient, int xPlayerChunkPos, int zPlayerChunkPos)
     {
-        return ((ArrayList)((ArrayList)blockList[xIndexArrayList])[zIndexArrayList]).Count < chunkMaxHeight;
-    }
-
-    private void MakeNewListInZDimensionIfNotExist(int xIndex, int zIndex)
-    {
-        if (((ArrayList)blockList[xIndex]).Count < zIndex + 1)
+        int offset = playerVisibilityIn1Direction - 1;
+        if (COORDINATE=="x")
         {
-            int amountOfListsToAdd = zIndex + 1 - ((ArrayList)blockList[xIndex]).Count;
-            for (int i = 0; i < amountOfListsToAdd; i++)
+            if(coefficient == 1) //usunac ostatni rzad,dodac pierwszy rzad, zaktualizowac drugi rzad
             {
-                ((ArrayList)blockList[xIndex]).Add(null);
-            }
+                for (int i = 0; i < mapChunkLength; i++)
+                    DestroyChunk(0, i);
 
-        }
-        if (((ArrayList)blockList[xIndex])[zIndex] == null)
-            ((ArrayList)blockList[xIndex])[zIndex] = new ArrayList();
-    }
-
-    private void MakeNewListInXDimensionIfNotExist(int xIndex)
-    {
-        if (blockList.Count < xIndex + 1)
-        {
-            int amountOfListsToAdd = xIndex + 1 - blockList.Count;
-            for (int i = 0; i < amountOfListsToAdd; i++)
-                blockList.Add(null);
-        }
-        if (blockList[xIndex] == null)
-            blockList[xIndex] = new ArrayList();
-    }
-
-    private void PrepareChunkListAndAddNewChunk(int xChunkPos, int zChunkPos)
-    {
-        if (chunkList.Count < xChunkPos + 1)
-        {
-            int amountOfListsToAdd = xChunkPos + 1 - chunkList.Count;
-            for (int i = 0; i < amountOfListsToAdd; i++)
-                chunkList.Add(null);
-        }
-        if (chunkList[xChunkPos] == null)
-            chunkList[xChunkPos] = new ArrayList();
-
-        if (((ArrayList)chunkList[xChunkPos]).Count < zChunkPos + 1)
-        {
-            int amountOfChunksToAdd = zChunkPos + 1 - ((ArrayList)chunkList[xChunkPos]).Count;
-            for (int i = 0; i < amountOfChunksToAdd; i++)
-                ((ArrayList)chunkList[xChunkPos]).Add(null);
-        }
-        ((ArrayList)chunkList[xChunkPos])[zChunkPos] = new Chunk(xChunkPos * chunkWidth, zChunkPos * chunkWidth, transform, this);
-        Chunk chunk = (Chunk)((ArrayList)chunkList[xChunkPos])[zChunkPos];
-        chunksToVisualizeList.Add(chunk);
-    }
-
-    private void UpdateWorld(int xChunkPos, int zChunkPos, Function function)
-    {
-        for (int i = -4; i < numberOfChunksInLine; i++)
-        {
-            if (xChunkPos - 4 >= 0)
-            {
-                if (!IsChunk(xChunkPos - 4, zChunkPos + i) && zChunkPos + i >= 0)
+                chunkList.RemoveAt(0);
+                chunkList.Add(new ArrayList());
+                for (int z = -playerVisibilityIn1Direction + 1; z < playerVisibilityIn1Direction; z++)
                 {
-                    function(xChunkPos - 4, zChunkPos + i);
+                    int row = 18;
+                    ((ArrayList)chunkList[row]).Add(new Chunk(chunkWidth * (xPlayerChunkPos + offset), chunkWidth * (zPlayerChunkPos + z), transform, row, z + offset));
+                    chunksToVisualizeList.Add((Chunk)((ArrayList)chunkList[row])[z + offset]);          //offset - number must be non-negative
+                    chunksToUpdateList.Add((Chunk)((ArrayList)chunkList[row - 1])[z + offset]);
                 }
+                for (int i = 0; i < 18; i++)
+                    for (int j = 0; j < 19; j++)
+                    {
+                        ((Chunk)((ArrayList)chunkList[i])[j]).xListPos--;
+                    }
             }
-            if (zChunkPos - 4 >= 0)
+            else
             {
-                if (!IsChunk(xChunkPos + i, zChunkPos - 4) && xChunkPos + i >= 0)
+                for (int i = 0; i < mapChunkLength; i++)
+                    DestroyChunk(18, i);
+
+                chunkList.RemoveAt(18);
+                chunkList.Insert(0, new ArrayList());
+                for (int z = -playerVisibilityIn1Direction + 1; z < playerVisibilityIn1Direction; z++)
                 {
-                    function(xChunkPos + i, zChunkPos - 4);
+                    int row = 0;
+                    ((ArrayList)chunkList[row]).Add(new Chunk(chunkWidth * (xPlayerChunkPos - offset), chunkWidth * (zPlayerChunkPos + z), transform, row, z + offset));
+                    chunksToVisualizeList.Add((Chunk)((ArrayList)chunkList[row])[z + offset]);
+                    chunksToUpdateList.Add((Chunk)((ArrayList)chunkList[row + 1])[z + offset]);
                 }
-            }
-            if (!IsChunk(xChunkPos + 4, zChunkPos + i) && zChunkPos + i >= 0)
-            {
-                function(xChunkPos + 4, zChunkPos + i);
-            }
-            if (!IsChunk(xChunkPos + i, zChunkPos + 4) && xChunkPos + i >= 0)
-            {
-                function(xChunkPos + i, zChunkPos + 4);
+                for (int i = 1; i < 19; i++)
+                    for (int j = 0; j < 19; j++)
+                    {
+                        ((Chunk)((ArrayList)chunkList[i])[j]).xListPos++;
+                    }
             }
         }
-    }
-
-    private void VisualizeNewChunks()
-    {
-        if (chunksToVisualizeList.Count > 0)
+        else
         {
-            foreach (Chunk chunk in chunksToVisualizeList)
+            if (coefficient == 1) //usunac ostatni rzad,dodac pierwszy rzad, zaktualizowac drugi rzad
             {
-                chunk.VisualizeChunk(this);
-            }
-            chunksToVisualizeList.Clear();
-        }
-    }
-    private void UpdateChunks(int xChunkPos, int zChunkPos)
-    {
-        VisualizeNewChunks();
-        int playerVisibility = playerVisibilityIn1Direction;
-        for (int i = -4; i < numberOfChunksInLine; i++)
-        {
-            if (xChunkPos - playerVisibility >= 0) // if move right
-            {
-                if (IsChunk(xChunkPos - playerVisibility, zChunkPos + i) && zChunkPos + i >= 0)
+                int lastColumn = 18;
+                int prelastColumn = 17;
+                for(int x=0; x < mapChunkLength; x++)
                 {
+                    DestroyChunk(x, 0);
+                    ((ArrayList)chunkList[x]).RemoveAt(0);
+                    ((ArrayList)chunkList[x]).Add(new Chunk(chunkWidth * (xPlayerChunkPos + x - offset), chunkWidth * (zPlayerChunkPos + offset), transform, x,18));
 
-                    DestroyChunk(xChunkPos - playerVisibility, zChunkPos + i); //after desrtoying old chunks changeVisual active chunks
-
-                    int lastVisibleBlockXCoord = xChunkPos - playerVisibility + 1;
-                    ((Chunk)((ArrayList)chunkList[lastVisibleBlockXCoord])[zChunkPos + i]).VisualizeChunk(this);
-                    int secondRawAfterAddNewChunks = xChunkPos + playerVisibility - 2;
-                    ((Chunk)((ArrayList)chunkList[secondRawAfterAddNewChunks])[zChunkPos + i]).VisualizeChunk(this);
-
-                }
-            }
-
-            if (zChunkPos - playerVisibility >= 0) 
-            {
-                if (IsChunk(xChunkPos + i, zChunkPos - playerVisibility) && xChunkPos + i >= 0) // if move forward
-                {
-                    DestroyChunk(xChunkPos + i, zChunkPos - playerVisibility);
-                    int lastVisibleBlockZCoord = zChunkPos - playerVisibility + 1;
-                    ((Chunk)((ArrayList)chunkList[xChunkPos + i])[lastVisibleBlockZCoord]).VisualizeChunk(this);
-                    int secondRawAfterAddNewChunks = zChunkPos + playerVisibility - 2;
-                    ((Chunk)((ArrayList)chunkList[xChunkPos + i])[secondRawAfterAddNewChunks]).VisualizeChunk(this);
-                }
-            }
-
-            if (IsChunk(xChunkPos + playerVisibility, zChunkPos + i) && zChunkPos + i >= 0) // if move left
-            {
-                DestroyChunk(xChunkPos + playerVisibility, zChunkPos + i);
-                int lastVisibleBlockXCoord = xChunkPos + playerVisibility - 1;
-                ((Chunk)((ArrayList)chunkList[lastVisibleBlockXCoord])[zChunkPos + i]).VisualizeChunk(this);
-                if (xChunkPos - playerVisibility + 2 >= 0)
-                {
-                    int secondRawAfterAddNewChunks = xChunkPos - playerVisibility + 2;
-                    ((Chunk)((ArrayList)chunkList[secondRawAfterAddNewChunks])[zChunkPos + i]).VisualizeChunk(this);
-                }
+                    chunksToVisualizeList.Add((Chunk)((ArrayList)chunkList[x])[lastColumn]);
+                    chunksToUpdateList.Add((Chunk)((ArrayList)chunkList[x])[prelastColumn]);
                     
-            }
-
-            if (IsChunk(xChunkPos + i, zChunkPos + playerVisibility) && xChunkPos + i >= 0) // if move down
-            {
-                DestroyChunk(xChunkPos + i, zChunkPos + playerVisibility);
-                int lastVisibleBlockZCoord = zChunkPos + playerVisibility - 1;
-                ((Chunk)((ArrayList)chunkList[xChunkPos + i])[lastVisibleBlockZCoord]).VisualizeChunk(this);
-                if (zChunkPos - playerVisibility + 2 >= 0)
-                {
-                    int secondRawAfterAddNewChunks = zChunkPos - playerVisibility + 2;
-                    ((Chunk)((ArrayList)chunkList[xChunkPos + i])[secondRawAfterAddNewChunks]).VisualizeChunk(this);
                 }
+                for (int i = 0; i < 19; i++)
+                    for (int j = 0; j < 18; j++)
+                    {
+                        ((Chunk)((ArrayList)chunkList[i])[j]).zListPos--;
+                    }
+            }
+            else
+            {
+                int firstColumn = 0;
+                int secondColumn = 1;
+                for (int x = 0; x < mapChunkLength; x++)
+                {
+                    DestroyChunk(x, 18);
+                    ((ArrayList)chunkList[x]).RemoveAt(18);
+                    ((ArrayList)chunkList[x]).Insert(0, new Chunk(chunkWidth * (xPlayerChunkPos + x - offset), chunkWidth * (zPlayerChunkPos - offset), transform, x, 0));
+                    chunksToVisualizeList.Add((Chunk)((ArrayList)chunkList[x])[firstColumn]);
+                    chunksToUpdateList.Add((Chunk)((ArrayList)chunkList[x])[secondColumn]);
+                }
+                for (int i = 0; i < 19; i++)
+                    for (int j = 1; j < 19; j++)
+                    {
+                        ((Chunk)((ArrayList)chunkList[i])[j]).zListPos++;
+                    }
             }
         }
     }
 
-    private void DestroyChunk(int xChunkPos, int zChunkPos)
+    private void UpdateBlockList(string COORDINATE, int coefficient, int xChunkPos, int zChunkPos)
     {
-        Destroy(((Chunk)((ArrayList)chunkList[xChunkPos])[zChunkPos]).gameObject);
-        ((ArrayList)chunkList[xChunkPos])[zChunkPos] = null;
+        if(COORDINATE == "z")
+        {
+            for(int x = 0; x < 19 * chunkWidth; x++)
+                for(int z = 0; z < chunkWidth; z++)
+                {
+                    if (coefficient == 1)
+                        ((ArrayList)blockList[x]).RemoveAt(0);
+                    else
+                        ((ArrayList)blockList[x]).RemoveAt(((ArrayList)blockList[x]).Count - 1);
+                }
+            for (int x = 0; x < 19 * chunkWidth; x++)
+                for (int z = 0; z < chunkWidth; z++)
+                {
+                    if (coefficient == 1)
+                        ((ArrayList)blockList[x]).Add(new ArrayList());
+                    else
+                        ((ArrayList)blockList[x]).Insert(0, new ArrayList());
+                }
+            
+        }
+        else
+        {
+            if (coefficient == 1)
+            {
+                for(int x = 0; x < chunkWidth; x++)
+                {
+                    blockList.RemoveAt(0);
+                    blockList.Add(new ArrayList());
+                }
+                for (int x = 18 * chunkWidth; x < 19 * chunkWidth; x++)
+                    for (int z = 0; z < 19 * chunkWidth; z++)
+                    {
+                        ((ArrayList)blockList[x]).Add(new ArrayList());
+                    }
+            }
+            else
+            {
+                for (int x = 0; x < chunkWidth; x++)
+                {
+                    blockList.RemoveAt(blockList.Count - 1);
+                    blockList.Insert(0, new ArrayList());
+                }
+                for(int x = 0;x < chunkWidth; x++)
+                    for(int z = 0; z < 19 * chunkWidth; z++)
+                    {
+                        ((ArrayList)blockList[x]).Add(new ArrayList());
+                    }
+
+            }
+        }
+    }
+
+    private IEnumerator VisualizeChunks()
+    {
+            while (chunksToVisualizeList.Count > 0)
+            {
+                isWorking = true;
+                //AddNewBlocksToArray(chunksToVisualizeList[0].xGlobalPos / 6, chunksToVisualizeList[0].zGlobalPos / 6);
+                NewFunction(chunksToVisualizeList[0].xListPos, chunksToVisualizeList[0].zListPos, chunksToVisualizeList[0].xGlobalPos, chunksToVisualizeList[0].zGlobalPos);
+                while (chunksToVisualizeList.Count > 1)
+                {
+                    //AddNewBlocksToArray(chunksToVisualizeList[1].xGlobalPos / 6, chunksToVisualizeList[1].zGlobalPos / 6);
+                    NewFunction(chunksToVisualizeList[1].xListPos, chunksToVisualizeList[1].zListPos, chunksToVisualizeList[1].xGlobalPos, chunksToVisualizeList[1].zGlobalPos);
+                    chunksToVisualizeList[0].VisualizeChunk();
+                    chunksToVisualizeList.RemoveAt(0);
+                    chunksToUpdateList[0].VisualizeChunk();
+                    chunksToUpdateList.RemoveAt(0);
+                    yield return null;
+                }
+                chunksToVisualizeList[0].VisualizeChunk();
+                chunksToVisualizeList.RemoveAt(0);
+                chunksToUpdateList[0].VisualizeChunk();
+                chunksToUpdateList.RemoveAt(0);
+                isWorking = false;
+                yield break;
+            }
+    }
+
+    private void DestroyChunk(int xChunkListPos, int zChunkListPos)
+    {
+        Destroy(((Chunk)((ArrayList)chunkList[xChunkListPos])[zChunkListPos]).gameObject);
     }
 
     private void SetBiomeParametres()
@@ -343,5 +376,12 @@ public class World : MonoBehaviour
         Biome.offsetZhumadity = Random.Range(0f, 99999f);
         Biome.offsetXtemperature = Random.Range(0f, 99999f);
         Biome.offsetZtemperature = Random.Range(0f, 99999f);
+    }
+    public Vector3Int GlobalPosOfFirstChunkInList()
+    {
+        int x = ((Chunk)((ArrayList)chunkList[0])[0]).xGlobalPos;
+        int z = ((Chunk)((ArrayList)chunkList[0])[0]).zGlobalPos;
+        Vector3Int vector = new Vector3Int(x, 0, z);
+        return vector;
     }
 }
