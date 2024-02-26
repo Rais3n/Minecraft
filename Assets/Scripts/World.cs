@@ -2,8 +2,10 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using TreeEditor;
 using Unity.VisualScripting;
 using UnityEngine;
+using static Trees;
 using Random = UnityEngine.Random;
 
 
@@ -18,6 +20,7 @@ public class World : MonoBehaviour
     private int maxGeneratedHeight = 60;
     private int playerVisibilityIn1Direction = 10;
     private int mapChunkLength;
+    private int mapBlockLength;
     private Vector3Int previousPlayerChunkPos;
 
     private ArrayList chunkList = new ArrayList();
@@ -35,10 +38,17 @@ public class World : MonoBehaviour
     {
         int initialWordLenght = 2 * playerVisibilityIn1Direction - 1;
         mapChunkLength = 2 * playerVisibilityIn1Direction - 1;
-        CreateArrayOfBlocks(initialWordLenght);
-        MakeInitialChunkList(initialWordLenght);
-        MakeFirstChunks(initialWordLenght);
+        mapBlockLength = chunkWidth * mapChunkLength;
         
+        MakeInitialChunkList(initialWordLenght);
+        CreateArrayOfBlocks(initialWordLenght);
+        for (int i = 0; i < mapChunkLength; i++)
+            for (int j = 0; j < mapChunkLength; j++)
+            {
+                Chunk chunk = (Chunk)((ArrayList)chunkList[i])[j];
+                PlantTrees(chunk);
+            }
+        DrawFirstChunks(initialWordLenght);      
     }
     private void Update()
     {
@@ -50,13 +60,117 @@ public class World : MonoBehaviour
             {
                 playerPosInChunkCoord.x = previousPlayerChunkPos.x;                                     //this line is needed to avoid error
             }
-            Test(playerPosInChunkCoord.x, playerPosInChunkCoord.z);
+            UpdateWorld(playerPosInChunkCoord.x, playerPosInChunkCoord.z);
 
             StartCoroutine("VisualizeChunks");
             previousPlayerChunkPos = playerPosInChunkCoord;
         }
     }
-    private void MakeFirstChunks(int initialWordLenght)
+
+    private void PlantTrees(Chunk chunk)
+    {
+          foreach (var tree in chunk.plantList)
+          {
+              Vector3 pos = ConvertGlobalToBlockListCoordinates(tree.pos.x, 0, tree.pos.z);
+              if (pos.x > 1 && pos.x < mapBlockLength - 2 && pos.z > 1 && pos.z < mapBlockLength - 2)
+              {
+                  AddTreesToBlockList(tree.pos, tree.BIOME);
+              }
+          }
+    }
+
+    private void AddTreesToBlockList(Vector3Int pos, string biome)
+    {
+        int kindOfWood;
+        int kindOfLeaves;
+        int treeHeight;
+        Vector3Int posConverted = ConvertGlobalToBlockListCoordinates(pos.x,pos.y, pos.z);
+        if (biome == Biome.PLAINS_SNOW || biome == Biome.MOUNTAIN_SNOW || biome == Biome.TAIGA || biome == Biome.HILL_SNOW) //dodanie bloku na wysokosci "treeData.pos.y + 5" moze powodowac error ze wzgledu na to ze maksymalna wysokosc w blockList to: maxGeneratedHeight + 1 (do zaktualizowania)
+        {
+            kindOfWood = BlockData.kindOfBlock["dark-wood"];
+            kindOfLeaves = BlockData.kindOfBlock["spruce-leaves"];
+            treeHeight = 7;
+        }
+        else
+        {
+            kindOfWood = BlockData.kindOfBlock["wood"];
+            kindOfLeaves = BlockData.kindOfBlock["leaves"];
+            treeHeight = 6;
+        }
+        for (int y = 1; y < treeHeight; y++)
+        {
+            ((ArrayList)((ArrayList)blockList[posConverted.x])[posConverted.z])[posConverted.y + y] = kindOfWood;
+        }
+        if (kindOfLeaves == BlockData.kindOfBlock["leaves"])
+        {
+            AddLeavesToBlockList(posConverted.x, posConverted.y, posConverted.z, kindOfLeaves);
+        }
+        else
+        {
+            AddSpruceLeavesToBlockList(posConverted.x, posConverted.y, posConverted.z, kindOfLeaves);
+        }
+    }
+    private void AddLeavesToBlockList(int x, int y, int z, int kindOfLeaves)
+    {
+
+        int heightAboveGround = 4;
+        y += heightAboveGround;
+        for (int level = 0; level < 2; level++)
+            for (int i = x - 2; i < x + 3; i++)
+                for (int j = z - 2; j < z + 3; j++)
+                {
+                    if (GetBlock(i, y + level, j) == BlockData.kindOfBlock["none"])
+                        ((ArrayList)((ArrayList)blockList[i])[j])[y + level] = kindOfLeaves;
+                }
+        for (int i = x - 1; i < x + 2; i++)
+            for (int j = z - 1; j < z + 2; j++)
+            {
+                if (GetBlock(i, y + 2, j) == BlockData.kindOfBlock["none"])
+                    ((ArrayList)((ArrayList)blockList[i])[j])[y + 2] = kindOfLeaves;
+            }
+        if (GetBlock(x - 1, y + 3, z) == BlockData.kindOfBlock["none"])
+            ((ArrayList)((ArrayList)blockList[x - 1])[z])[y + 3] = kindOfLeaves;
+        if (GetBlock(x + 1, y + 3, z) == BlockData.kindOfBlock["none"])
+            ((ArrayList)((ArrayList)blockList[x + 1])[z])[y + 3] = kindOfLeaves;
+        if (GetBlock(x, y + 3, z - 1) == BlockData.kindOfBlock["none"])
+            ((ArrayList)((ArrayList)blockList[x])[z - 1])[y + 3] = kindOfLeaves;
+        if (GetBlock(x, y + 3, z + 1) == BlockData.kindOfBlock["none"])
+            ((ArrayList)((ArrayList)blockList[x])[z + 1])[y + 3] = kindOfLeaves;
+        if (GetBlock(x, y + 3, z) == BlockData.kindOfBlock["none"])
+            ((ArrayList)((ArrayList)blockList[x])[z])[y + 3] = kindOfLeaves;
+    }
+
+    private void AddSpruceLeavesToBlockList(int x, int y, int z, int kindOfLeaves)
+    {
+        int heightAboveGround = 3;
+        y += heightAboveGround;
+
+        for(int level = 0;level < 2; level++)
+            for(int i = x - 2 + level; i < x + 3 - level; i++)
+                for(int j = z - 2 + level; j < z + 3 - level; j++)
+                {
+                    if(Mathf.Abs(i - x) != 2 - level || Mathf.Abs(j - z) != 2 - level)
+                    {
+                        if (GetBlock(i, y + level, j) == BlockData.kindOfBlock["none"])
+                            ((ArrayList)((ArrayList)blockList[i])[j])[y + level] = kindOfLeaves;
+                    }
+                }
+        int offset = 3;
+        y += offset;
+        for (int i = x - 1; i < x + 2; i++)
+            for (int j = z - 1; j < z + 2; j++)
+            {
+                if (Mathf.Abs(i - x) != 1 || Mathf.Abs(j - z) != 1)
+                {
+                    if (GetBlock(i, y, j) == BlockData.kindOfBlock["none"])
+                        ((ArrayList)((ArrayList)blockList[i])[j])[y] = kindOfLeaves;
+                }
+            }
+
+        if (GetBlock(x, y + 1, z) == BlockData.kindOfBlock["none"])
+            ((ArrayList)((ArrayList)blockList[x])[z])[y + 1] = kindOfLeaves;
+    }
+    private void DrawFirstChunks(int initialWordLenght)
     {
         for (int x = 0; x < initialWordLenght; x++)
         {
@@ -79,29 +193,29 @@ public class World : MonoBehaviour
         }
     }
 
-    private void NewFunction(int xListPos, int zListPos, int xGlobalPos, int zGlobalPos)
+    private void HandleBlockList(int xListPos, int zListPos, int xGlobalPos, int zGlobalPos)
     {
         int max;
         for(int x = 0; x < chunkWidth;x++)
             for(int z = 0; z < chunkWidth; z++)
             {
                 max = Biome.Height(x + xGlobalPos, z + zGlobalPos,out string biome);
-                SetBlocksInBlockList(max, xListPos * chunkWidth + x, zListPos * chunkWidth + z, biome);
+                SetBlocksInBlockList(max, xListPos * chunkWidth + x, zListPos * chunkWidth + z, biome, xGlobalPos + x, zGlobalPos + z);
             }
     }
 
     private void CreateArrayOfBlocks(int initialWorldLength)
     {
-        for (int x = 0; x < initialWorldLength * chunkWidth; x++)
+        for (int x = 0; x < mapBlockLength; x++)
         {
             blockList.Add(new ArrayList());
 
-            for (int z = 0; z < initialWorldLength * chunkWidth; z++)
+            for (int z = 0; z < mapBlockLength; z++)
             {
                 ((ArrayList)blockList[x]).Add(new ArrayList());
                 int max;
                 max = Biome.Height(x,z, out string biome);
-                SetBlocksInBlockList(max, x, z, biome);
+                SetBlocksInBlockList(max, x, z, biome, x, z);
             }
         }
     }
@@ -147,27 +261,53 @@ public class World : MonoBehaviour
     {
         return maxGeneratedHeight;
     }
-    private void SetBlocksInBlockList(int heightOfTerrain, int xIndexArrayList, int zIndexArrayList, string biome)
+    private void SetBlocksInBlockList(int heightOfTerrain, int xIndexArrayList, int zIndexArrayList, string biome, int xGlobal, int zGlobal)
     {
-            int biomeBlock = SetBlockIndexForBiome(biome);
+        int biomeBlock = SetBlockIndexForBiome(biome);
 
-            for (int y = 0; y < heightOfTerrain - 1; y++)
-            {
-                ((ArrayList)((ArrayList)blockList[xIndexArrayList])[zIndexArrayList]).Add(biomeBlock);
-            }
+        for (int y = 0; y < heightOfTerrain - 1; y++)
+        {
+            ((ArrayList)((ArrayList)blockList[xIndexArrayList])[zIndexArrayList]).Add(biomeBlock);
+        }
 
-            if(biome == "plains-snow" || biome == "mountain-snow" || biome == "hill-snow" || biome == "taiga")
-                biomeBlock = BlockData.kindOfBlock["dirt-snow"];
-            else biomeBlock = BlockData.kindOfBlock["greenDirt"];
+        int maxHeightToSpawnTree = 50;
+        if (maxHeightToSpawnTree >= heightOfTerrain && !IsNonForestedAre(biome))
+                if (Trees.CheckToPlantTree(xGlobal, zGlobal, biome) > Trees.spawnTreeThreshold)
+                {
+                    Vector2Int w = ConvertGlobalToChunkListCoordinates(xGlobal, zGlobal);
+                    ((Chunk)((ArrayList)chunkList[w.x])[w.y]).AddTreesToList(new Vector3Int(xGlobal, heightOfTerrain - 1, zGlobal), biome);
+                }
+        if (biome == "plains-snow" || biome == "mountain-snow" || biome == "hill-snow" || biome == "taiga")
+            biomeBlock = BlockData.kindOfBlock["dirt-snow"];
+        else if (biome == "desert") 
+            biomeBlock = BlockData.kindOfBlock["sand"];
+        else biomeBlock = BlockData.kindOfBlock["greenDirt"];
 
         ((ArrayList)((ArrayList)blockList[xIndexArrayList])[zIndexArrayList]).Add(biomeBlock);
 
-            for (int y = heightOfTerrain; y < maxGeneratedHeight + 1; y++)
-            {
-                ((ArrayList)((ArrayList)blockList[xIndexArrayList])[zIndexArrayList]).Add(BlockData.kindOfBlock["none"]);
-            }
+        for (int y = heightOfTerrain; y < maxGeneratedHeight + 1; y++)
+        {
+            ((ArrayList)((ArrayList)blockList[xIndexArrayList])[zIndexArrayList]).Add(BlockData.kindOfBlock["none"]);
+        }
     }
 
+    private bool IsNonForestedAre(string biome)
+    {
+        return biome == Biome.DESERT || biome == Biome.MOUNTAIN_SNOW || biome == Biome.MOUNTAIN;
+    }
+
+    private Vector2Int ConvertGlobalToChunkListCoordinates(int x, int z)
+    {
+        Vector3Int v = GlobalPosOfFirstChunkInList();
+        Vector2Int w = new Vector2Int((x - v.x) / chunkWidth, (z - v.z) / chunkWidth);
+        return w;
+    }
+    private Vector3Int ConvertGlobalToBlockListCoordinates(int x, int y, int z)
+    {
+        Vector3Int v = GlobalPosOfFirstChunkInList();
+        Vector3Int w = new Vector3Int(x - v.x, y, z - v.z);
+        return w;
+    }
     private int SetBlockIndexForBiome(string biome)
     {
         int blockIndex;
@@ -180,20 +320,20 @@ public class World : MonoBehaviour
 
         return blockIndex;
     }
-    private void Test(int xPlayerChunkPos, int zPlayerChunkPos)
+    private void UpdateWorld(int xPlayerChunkPos, int zPlayerChunkPos)
     {
         int coefficient;
         if (Math.Abs(zPlayerChunkPos - previousPlayerChunkPos.z) == 1)
         {
             coefficient = zPlayerChunkPos - previousPlayerChunkPos.z;
             UpdateChunkList("z", coefficient, xPlayerChunkPos, zPlayerChunkPos);
-            UpdateBlockList("z", coefficient, xPlayerChunkPos, zPlayerChunkPos);
+            RefreshBlockList("z", coefficient, xPlayerChunkPos, zPlayerChunkPos);
         }
         else if (Math.Abs(xPlayerChunkPos - previousPlayerChunkPos.x) == 1)
         {
             coefficient = xPlayerChunkPos - previousPlayerChunkPos.x;
             UpdateChunkList("x", coefficient, xPlayerChunkPos, zPlayerChunkPos);
-            UpdateBlockList("x", coefficient, xPlayerChunkPos, zPlayerChunkPos);
+            RefreshBlockList("x", coefficient, xPlayerChunkPos, zPlayerChunkPos);
         }
     }
     private void UpdateChunkList(string COORDINATE, int coefficient, int xPlayerChunkPos, int zPlayerChunkPos)
@@ -285,7 +425,7 @@ public class World : MonoBehaviour
         }
     }
 
-    private void UpdateBlockList(string COORDINATE, int coefficient, int xChunkPos, int zChunkPos)
+    private void RefreshBlockList(string COORDINATE, int coefficient, int xChunkPos, int zChunkPos)
     {
         if(COORDINATE == "z")
         {
@@ -344,18 +484,29 @@ public class World : MonoBehaviour
             while (chunksToVisualizeList.Count > 0)
             {
                 isWorking = true;
-                //AddNewBlocksToArray(chunksToVisualizeList[0].xGlobalPos / 6, chunksToVisualizeList[0].zGlobalPos / 6);
-                NewFunction(chunksToVisualizeList[0].xListPos, chunksToVisualizeList[0].zListPos, chunksToVisualizeList[0].xGlobalPos, chunksToVisualizeList[0].zGlobalPos);
-                while (chunksToVisualizeList.Count > 1)
+                HandleBlockList(chunksToVisualizeList[0].xListPos, chunksToVisualizeList[0].zListPos, chunksToVisualizeList[0].xGlobalPos, chunksToVisualizeList[0].zGlobalPos);
+                HandleBlockList(chunksToVisualizeList[1].xListPos, chunksToVisualizeList[1].zListPos, chunksToVisualizeList[1].xGlobalPos, chunksToVisualizeList[1].zGlobalPos);
+                PlantTrees(chunksToVisualizeList[0]);
+                PlantTrees(chunksToUpdateList[0]);
+                while (chunksToVisualizeList.Count > 2)
                 {
-                    //AddNewBlocksToArray(chunksToVisualizeList[1].xGlobalPos / 6, chunksToVisualizeList[1].zGlobalPos / 6);
-                    NewFunction(chunksToVisualizeList[1].xListPos, chunksToVisualizeList[1].zListPos, chunksToVisualizeList[1].xGlobalPos, chunksToVisualizeList[1].zGlobalPos);
+                    HandleBlockList(chunksToVisualizeList[2].xListPos, chunksToVisualizeList[2].zListPos, chunksToVisualizeList[2].xGlobalPos, chunksToVisualizeList[2].zGlobalPos);
+                    PlantTrees(chunksToVisualizeList[1]);
+                    PlantTrees(chunksToUpdateList[1]);
                     chunksToVisualizeList[0].VisualizeChunk();
                     chunksToVisualizeList.RemoveAt(0);
                     chunksToUpdateList[0].VisualizeChunk();
                     chunksToUpdateList.RemoveAt(0);
                     yield return null;
                 }
+                PlantTrees(chunksToVisualizeList[1]);
+                PlantTrees(chunksToUpdateList[1]);
+                chunksToVisualizeList[0].VisualizeChunk();
+                chunksToVisualizeList.RemoveAt(0);
+                chunksToUpdateList[0].VisualizeChunk();
+                chunksToUpdateList.RemoveAt(0);
+                yield return null;
+
                 chunksToVisualizeList[0].VisualizeChunk();
                 chunksToVisualizeList.RemoveAt(0);
                 chunksToUpdateList[0].VisualizeChunk();
@@ -363,6 +514,7 @@ public class World : MonoBehaviour
                 isWorking = false;
                 yield break;
             }
+
     }
 
     private void DestroyChunk(int xChunkListPos, int zChunkListPos)
@@ -376,6 +528,9 @@ public class World : MonoBehaviour
         Biome.offsetZhumadity = Random.Range(0f, 99999f);
         Biome.offsetXtemperature = Random.Range(0f, 99999f);
         Biome.offsetZtemperature = Random.Range(0f, 99999f);
+
+        Trees.xOffset = Random.Range(0f, 99999f);
+        Trees.zOffset = Random.Range(0f, 99999f);
     }
     public Vector3Int GlobalPosOfFirstChunkInList()
     {

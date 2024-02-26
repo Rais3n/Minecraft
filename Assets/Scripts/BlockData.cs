@@ -4,6 +4,8 @@ using UnityEngine;
 
 public static class BlockData
 {
+    public static readonly int top = 4;
+    public static readonly int down = 5;
 
     public static readonly Dictionary<string, int> kindOfBlock = new Dictionary<string, int>()
     {
@@ -15,7 +17,64 @@ public static class BlockData
         {"sand",5},
         {"dirt-snow", 6},
         {"leaves", 7},
+        {"wood", 8},
+        {"dark-wood", 9},
+        { "spruce-leaves",10}
     };
+
+    public static int GetBlockID(int kindOfWall, int wall)
+    {
+        int blockTextureIndex;
+        if (kindOfWall == kindOfBlock["stone"])
+            blockTextureIndex = 1;
+        else if (kindOfWall == kindOfBlock["greenDirt"])
+        {
+            if (wall == top)
+                blockTextureIndex = 40;
+            else if (wall == down)
+                blockTextureIndex = 2;
+            else blockTextureIndex = 3;
+        }
+        else if (kindOfWall == kindOfBlock["dirt"])
+            blockTextureIndex = 2;
+        else if (kindOfWall == kindOfBlock["sand"])
+            blockTextureIndex = 18;
+        else if (kindOfWall == kindOfBlock["dirt-snow"])
+        {
+            if (wall == top)
+                blockTextureIndex = 66;
+            else if (wall == down)
+                blockTextureIndex = 2;
+            else blockTextureIndex = 68;
+        }
+        else if (kindOfWall == kindOfBlock["wood"])
+        {
+            if (wall == top || wall == down)
+                blockTextureIndex = 21;
+            else blockTextureIndex = 20;
+        }
+        else if(kindOfWall == kindOfBlock["dark-wood"])
+        {
+            if (wall == top || wall == down)
+                blockTextureIndex = 21;
+            else blockTextureIndex = 116;
+        }
+        else if(kindOfWall == kindOfBlock["spruce-leaves"])
+        {
+            blockTextureIndex = 132;
+        }
+        else if (kindOfWall == kindOfBlock["leaves"])
+        {
+            blockTextureIndex = 52;
+        }
+        else if (kindOfWall == kindOfBlock["cobbelstone"])
+            blockTextureIndex = 16;
+        else
+            blockTextureIndex = 17;
+
+        return blockTextureIndex;
+
+    }
 
     public static readonly Vector3[] vertex = new Vector3[8]
     {

@@ -7,14 +7,7 @@ using static UnityEditor.PlayerSettings;
 
 public class Chunk
 {
-
-    private int width;
-    //private static readonly int forward = 2;
-    //private static readonly int back = 0;
-    //private static readonly int right = 1;
-    //private static readonly int left = 3;
-    private static readonly int up = 4;
-    private static readonly int down = 5;
+    public static int width = 6;
     public GameObject gameObject;
     private MeshRenderer meshRenderer;
     private MeshFilter meshFilter;
@@ -30,6 +23,8 @@ public class Chunk
     public int xListPos;
     public int zListPos;
 
+    public List<Trees.treeData> plantList = new List<Trees.treeData>();
+
 
     public Chunk(int xGlobalPos,int zGlobalPos, Transform parent, int xListPos, int zListPos)
     {
@@ -37,12 +32,18 @@ public class Chunk
         this.zGlobalPos = zGlobalPos;
         this.xListPos = xListPos;
         this.zListPos = zListPos;
-        width = World.Instance.GetChunkWidth();
         gameObject = new GameObject();
         gameObject.transform.SetParent(parent);
         meshRenderer = gameObject.AddComponent<MeshRenderer>();
         meshFilter = gameObject.AddComponent<MeshFilter>();
         meshRenderer.material = World.Instance.material;
+    }
+    public void AddTreesToList(Vector3Int pos, string BIOME)
+    {
+        Trees.treeData temp;
+        temp.pos = pos;
+        temp.BIOME = BIOME;
+        plantList.Add(temp);   
     }
 
     public void VisualizeChunk()
@@ -67,17 +68,37 @@ public class Chunk
             {
                 for (int y = 0; y < maxHeight; y++)
                 {
-                    //int kindOfBlock = World.Instance.GetBlock(xGlobalPos + x, y, zGlobalPos + z);
                     int kindOfBlock = World.Instance.GetBlock(xListPos * width + x, y, zListPos * width + z);
-                    if(kindOfBlock != BlockData.kindOfBlock["none"]) 
+                    if (kindOfBlock != BlockData.kindOfBlock["none"])
                     {
                         Vector3Int blockInWorldPosition = new Vector3Int(x + xGlobalPos, y, z + zGlobalPos);
                         Vector3Int blockInList = new Vector3Int(xListPos * width + x, y, zListPos * width + z);
                         DrawBlock(blockInWorldPosition, kindOfBlock, blockInList);
                     }
-                    else break;
+                    else {
+                        int potentialLeafHeight = 9;
+                        int maxHeightToSpawnTree = 50;
+                        if(y+1 <= maxHeightToSpawnTree)
+                        for (int height = y + 1; height < y + potentialLeafHeight; height++)
+                        {
+                            while(AreLeaves(xListPos * width + x, height, zListPos * width + z))
+                            {
+                                kindOfBlock = World.Instance.GetBlock(xListPos * width + x, height, zListPos * width + z);
+                                Vector3Int blockInWorldPosition = new Vector3Int(x + xGlobalPos, height, z + zGlobalPos);
+                                Vector3Int blockInList = new Vector3Int(xListPos * width + x, height, zListPos * width + z);
+                                DrawBlock(blockInWorldPosition, kindOfBlock, blockInList);
+                                height++;
+                            }
+                        }
+                        break; 
+                    }
                 }
             }
+    }
+
+    private bool AreLeaves(int x, int y, int z)
+    {
+        return World.Instance.GetBlock(x, y, z) == BlockData.kindOfBlock["leaves"] || World.Instance.GetBlock(x, y, z) == BlockData.kindOfBlock["spruce-leaves"];
     }
     
     
@@ -87,46 +108,55 @@ public class Chunk
         {
             if (i == 0)
             {
-                if (World.Instance.GetBlock(listPos.x, listPos.y, listPos.z - 1) != BlockData.kindOfBlock["none"])
+                //if (World.Instance.GetBlock(listPos.x, listPos.y, listPos.z - 1) != BlockData.kindOfBlock["none"] && World.Instance.GetBlock(listPos.x, listPos.y, listPos.z - 1) != BlockData.kindOfBlock["leaves"])
+                if (IsNoTransparentBlock(listPos.x, listPos.y, listPos.z - 1))
                     return false;
             }
             if (i == 1)
             {
-                if (World.Instance.GetBlock(listPos.x + 1, listPos.y, listPos.z) != BlockData.kindOfBlock["none"])
+                //if (World.Instance.GetBlock(listPos.x + 1, listPos.y, listPos.z) != BlockData.kindOfBlock["none"] && World.Instance.GetBlock(listPos.x + 1, listPos.y, listPos.z) != BlockData.kindOfBlock["leaves"])
+                if (IsNoTransparentBlock(listPos.x + 1, listPos.y, listPos.z))
                     return false;
             }
             if (i == 2)
             {
-                if (World.Instance.GetBlock(listPos.x, listPos.y, listPos.z + 1) != BlockData.kindOfBlock["none"])
+                //if (World.Instance.GetBlock(listPos.x, listPos.y, listPos.z + 1) != BlockData.kindOfBlock["none"] && World.Instance.GetBlock(listPos.x, listPos.y, listPos.z + 1) != BlockData.kindOfBlock["leaves"])
+                if (IsNoTransparentBlock(listPos.x, listPos.y, listPos.z + 1))
                     return false;
             }
             if (i == 3)
             {
-                if (World.Instance.GetBlock(listPos.x - 1, listPos.y, listPos.z) != BlockData.kindOfBlock["none"])
+                //if (World.Instance.GetBlock(listPos.x - 1, listPos.y, listPos.z) != BlockData.kindOfBlock["none"] && World.Instance.GetBlock(listPos.x - 1, listPos.y, listPos.z) != BlockData.kindOfBlock["leaves"])
+                if (IsNoTransparentBlock(listPos.x - 1, listPos.y, listPos.z))
                     return false;
             }
             if (i == 4)
             {
-                if (World.Instance.GetBlock(listPos.x, listPos.y + 1, listPos.z) != BlockData.kindOfBlock["none"])
+                //if (World.Instance.GetBlock(listPos.x, listPos.y + 1, listPos.z) != BlockData.kindOfBlock["none"] && World.Instance.GetBlock(listPos.x, listPos.y + 1, listPos.z) != BlockData.kindOfBlock["leaves"])
+                if (IsNoTransparentBlock(listPos.x, listPos.y + 1, listPos.z))
                     return false;
             }
             if (i == 5)
             {
-                if (World.Instance.GetBlock(listPos.x, listPos.y - 1, listPos.z) != BlockData.kindOfBlock["none"])
+                //if (World.Instance.GetBlock(listPos.x, listPos.y - 1, listPos.z) != BlockData.kindOfBlock["none"] && World.Instance.GetBlock(listPos.x, listPos.y - 1, listPos.z) != BlockData.kindOfBlock["leaves"])
+                if (IsNoTransparentBlock(listPos.x, listPos.y - 1, listPos.z))
                     return false;
             }
         }
         catch(ArgumentOutOfRangeException)
         {
-            //return true;
             return false;
         }
         catch (NullReferenceException)
         {
-            //return true;
             return false;
         }
         return true;
+    }
+
+    private bool IsNoTransparentBlock(int x, int y, int z)
+    {
+        return World.Instance.GetBlock(x, y, z) != BlockData.kindOfBlock["none"] && World.Instance.GetBlock(x, y, z) != BlockData.kindOfBlock["leaves"] && World.Instance.GetBlock(x, y, z) != BlockData.kindOfBlock["spruce-leaves"];
     }
 
     private void DrawBlock(Vector3Int blockInWorldPosition, int kindOfBlock, Vector3Int blockInList)
@@ -142,18 +172,22 @@ public class Chunk
                 uv.Add(GetVectorUV(vectorUV, kindOfBlock, i));
                 vertices.Add(BlockData.vertex[vertexIndex] + blockInWorldPosition);
                 triangle.Add(triangleIndex);
-                if (i == up && kindOfBlock == BlockData.kindOfBlock["greenDirt"])
+                if (i == BlockData.top && kindOfBlock == BlockData.kindOfBlock["greenDirt"])
                     colors.Add(new Color(0.509f, 1f, 0.236f, 1f));
+                else if(kindOfBlock == BlockData.kindOfBlock["leaves"])
+                    colors.Add(new Color(0.13f, 0.32f, 0f, 1f));
+                else if (kindOfBlock == BlockData.kindOfBlock["spruce-leaves"])
+                    colors.Add(new Color(0.1f, 0.24f, 0f, 1f));
                 else
-                    colors.Add(new Color(1f, 1f, 1f, 0f));
+                    colors.Add(new Color(1f, 1f, 1f, 1f));
                 triangleIndex++;
             }
         }
     }
 
-    private Vector2 GetVectorUV(Vector2 offsetUV, int kindOfWall, int wall)
+    private Vector2 GetVectorUV(Vector2 offsetUV, int kindOfBlock, int wall)
     {
-        int blockTextureIndex=GetBlockID(kindOfWall, wall);
+        int blockTextureIndex=BlockData.GetBlockID(kindOfBlock, wall);
 
         int textureWidth = 256;
         int blockTextureWidth = 16;
@@ -161,42 +195,6 @@ public class Chunk
         float coordY = (float)(240 - blockTextureIndex / blockTextureWidth * blockTextureWidth)/textureWidth;
         Vector2 uv = new Vector2(coordX, coordY) + offsetUV/blockTextureWidth;
         return uv;
-    }
-
-    private int GetBlockID(int kindOfWall, int wall)
-    {
-        int blockTextureIndex;
-        if (kindOfWall == BlockData.kindOfBlock["stone"])
-            blockTextureIndex = 1;
-        else if (kindOfWall == BlockData.kindOfBlock["greenDirt"])
-        {
-            if (wall == up)
-                blockTextureIndex = 40;
-            else if (wall == down)
-                blockTextureIndex = 2;
-            else blockTextureIndex = 3;
-        }
-        else if (kindOfWall == BlockData.kindOfBlock["dirt"])
-            blockTextureIndex = 2;
-        else if (kindOfWall == BlockData.kindOfBlock["sand"])
-            blockTextureIndex = 18;
-        else if (kindOfWall == BlockData.kindOfBlock["dirt-snow"])
-        {
-            if(wall == up)
-                blockTextureIndex = 66;
-            else if (wall == down)
-                blockTextureIndex = 2;
-            else blockTextureIndex = 68;
-        }
-        else if (kindOfWall == BlockData.kindOfBlock["leaves"])
-        {
-            blockTextureIndex = 52;
-        }
-        else
-            blockTextureIndex = 17;
-
-        return blockTextureIndex;
-
     }
     private void CreateMesh()
     {

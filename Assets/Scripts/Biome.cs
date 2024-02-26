@@ -14,7 +14,18 @@ public class Biome
     public static float offsetXhumadity;
     public static float offsetZhumadity;
 
-    private static readonly Dictionary<string, Dictionary<string,int>> biomes = new Dictionary<string, Dictionary<string, int>>()
+    public static string DESERT = "desert";
+    public static string PLAINS = "plains";
+    public static string PLAINS_SNOW = "plains-snow";
+    public static string JUNGLE = "jungle";
+    public static string FOREST = "forest";
+    public static string TAIGA = "taiga";
+    public static string HILL = "hill";
+    public static string HILL_SNOW = "hill-snow";
+    public static string MOUNTAIN = "mountain";
+    public static string MOUNTAIN_SNOW = "mountain-snow";
+
+    private static readonly Dictionary<string, Dictionary<string,int>> landform = new Dictionary<string, Dictionary<string, int>>()
     {
         {
         "low", new Dictionary<string, int>
@@ -52,16 +63,16 @@ public class Biome
 
     private static readonly Dictionary<string, string> heightOfBiome = new Dictionary<string, string>()
     {
-        {"desert", "low"},
-        {"plains", "low"},
-        {"plains-snow", "low"},
-        {"jungle", "mid"},
-        {"forest", "mid"},
-        {"taiga", "mid"},
-        {"hill", "mid-high"},
-        {"hill-snow", "mid-high"},
-        {"mountain", "high"},
-        {"mountain-snow", "high"}
+        {DESERT, "low"},
+        {PLAINS, "low"},
+        {PLAINS_SNOW, "low"},
+        {JUNGLE, "mid"},
+        {FOREST, "mid"},
+        {TAIGA, "mid"},
+        {HILL, "mid-high"},
+        {HILL_SNOW, "mid-high"},
+        {MOUNTAIN, "high"},
+        {MOUNTAIN_SNOW, "high"}
     };
 
     private static string GetBiome(float moisture, float temperature)
@@ -117,9 +128,9 @@ public class Biome
             value = 0;
             height = heights[i];
 
-            amplitude = biomes[height][AMPLITUDE];
-            frequency = biomes[height][FREQUENCY];
-            octaveCount = biomes[height][OCTAVES];
+            amplitude = landform[height][AMPLITUDE];
+            frequency = landform[height][FREQUENCY];
+            octaveCount = landform[height][OCTAVES];
 
             for (int j = octaveCount; j > 0; j--)
             {
@@ -151,14 +162,12 @@ public class Biome
             weight[1] = 0.5f - weight[0];
             weight[2] = 0.5f;
         }
-
         else if(Between(moisture, 0.5f, 0.7f))
         {
             weight[0] = (1f - (moisture - 0.5f)/0.2f)/2f;
             weight[1] = 0.5f - weight[0];
             weight[2] = 0.5f;
         }
-
         else if(Between(moisture, 0.7f, 1f))
         {
             weight[0] = (1f - (moisture - 0.7f)/0.3f)/2f;

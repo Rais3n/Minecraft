@@ -14,18 +14,31 @@ public class Player : MonoBehaviour
     private float jumpHeight = 1.25f;
     public static Player Instance { get; private set; }
     private bool isGrounded;
+    private bool isEquipmentOpen;
     private void Awake()
     {
         characterController = GetComponent<CharacterController>();
         Cursor.lockState = CursorLockMode.Locked;
         velocity = Vector3.zero;
         Instance = this;
+        isEquipmentOpen = false;
+    }
+
+    private void Start()
+    {
+        EquipmentManager equipmentManager = GameObject.Find("EquipmentManager").GetComponent<EquipmentManager>();
+        equipmentManager.OnEPressed += EquipmentManager_OnEPressed;
+    }
+
+    private void EquipmentManager_OnEPressed(object sender, EquipmentManager.OnEPressedEventArgs e)
+    {
+        isEquipmentOpen = e.isEquipmentOpen;
     }
 
     private void LateUpdate()
     {
-        
-        Move();
+        if(!isEquipmentOpen)
+            Move();
         CheckIfGrounded();
         movementInYAxis();
     }
