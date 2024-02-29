@@ -67,6 +67,14 @@ public class World : MonoBehaviour
         }
     }
 
+    public bool GetBlockListLength(int x,int y, int z)
+    {
+
+        if(x >= 0 && y >= 0 && z >= 0 && x <= 113 && z <= 113 && y <= 113)
+            return true;
+        return false;
+    }
+
     private void PlantTrees(Chunk chunk)
     {
           foreach (var tree in chunk.plantList)
@@ -85,7 +93,7 @@ public class World : MonoBehaviour
         int kindOfLeaves;
         int treeHeight;
         Vector3Int posConverted = ConvertGlobalToBlockListCoordinates(pos.x,pos.y, pos.z);
-        if (biome == Biome.PLAINS_SNOW || biome == Biome.MOUNTAIN_SNOW || biome == Biome.TAIGA || biome == Biome.HILL_SNOW) //dodanie bloku na wysokosci "treeData.pos.y + 5" moze powodowac error ze wzgledu na to ze maksymalna wysokosc w blockList to: maxGeneratedHeight + 1 (do zaktualizowania)
+        if (biome == Biome.PLAINS_SNOW || biome == Biome.MOUNTAIN_SNOW || biome == Biome.TAIGA || biome == Biome.HILL_SNOW)
         {
             kindOfWood = BlockData.kindOfBlock["dark-wood"];
             kindOfLeaves = BlockData.kindOfBlock["spruce-leaves"];
@@ -223,14 +231,7 @@ public class World : MonoBehaviour
     {
         int xChunkPos = xGlobalPos / chunkWidth;
         int zChunkPos = zGlobalPos / chunkWidth;
-        try
-        {
             return (Chunk)((ArrayList)chunkList[xChunkPos])[zChunkPos] != null;
-        }
-        catch (ArgumentOutOfRangeException)
-        {
-            return false;
-        }
     }
     private Vector3Int PlayerPosInChunkCoord(int xPlayerPos, int zPlayerPos)
     {
@@ -341,7 +342,7 @@ public class World : MonoBehaviour
         int offset = playerVisibilityIn1Direction - 1;
         if (COORDINATE=="x")
         {
-            if(coefficient == 1) //usunac ostatni rzad,dodac pierwszy rzad, zaktualizowac drugi rzad
+            if(coefficient == 1) //delete last chunk row, add first chunk row and update second chunk row
             {
                 for (int i = 0; i < mapChunkLength; i++)
                     DestroyChunk(0, i);
@@ -384,7 +385,7 @@ public class World : MonoBehaviour
         }
         else
         {
-            if (coefficient == 1) //usunac ostatni rzad,dodac pierwszy rzad, zaktualizowac drugi rzad
+            if (coefficient == 1) //delete last chunk row, add first chunk row and update second chunk row
             {
                 int lastColumn = 18;
                 int prelastColumn = 17;

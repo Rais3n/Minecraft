@@ -30,7 +30,7 @@ public class Biome
         {
         "low", new Dictionary<string, int>
             {
-                {AMPLITUDE, 2},
+                {AMPLITUDE, 4},
                 {FREQUENCY, 32},
                 {OCTAVES, 2}
             }

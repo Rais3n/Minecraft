@@ -104,59 +104,46 @@ public class Chunk
     
     private bool DrawWall(int i, Vector3Int listPos)
     {
-        try
+
+        if (i == 0)
         {
-            if (i == 0)
-            {
-                //if (World.Instance.GetBlock(listPos.x, listPos.y, listPos.z - 1) != BlockData.kindOfBlock["none"] && World.Instance.GetBlock(listPos.x, listPos.y, listPos.z - 1) != BlockData.kindOfBlock["leaves"])
-                if (IsNoTransparentBlock(listPos.x, listPos.y, listPos.z - 1))
-                    return false;
-            }
-            if (i == 1)
-            {
-                //if (World.Instance.GetBlock(listPos.x + 1, listPos.y, listPos.z) != BlockData.kindOfBlock["none"] && World.Instance.GetBlock(listPos.x + 1, listPos.y, listPos.z) != BlockData.kindOfBlock["leaves"])
-                if (IsNoTransparentBlock(listPos.x + 1, listPos.y, listPos.z))
-                    return false;
-            }
-            if (i == 2)
-            {
-                //if (World.Instance.GetBlock(listPos.x, listPos.y, listPos.z + 1) != BlockData.kindOfBlock["none"] && World.Instance.GetBlock(listPos.x, listPos.y, listPos.z + 1) != BlockData.kindOfBlock["leaves"])
-                if (IsNoTransparentBlock(listPos.x, listPos.y, listPos.z + 1))
-                    return false;
-            }
-            if (i == 3)
-            {
-                //if (World.Instance.GetBlock(listPos.x - 1, listPos.y, listPos.z) != BlockData.kindOfBlock["none"] && World.Instance.GetBlock(listPos.x - 1, listPos.y, listPos.z) != BlockData.kindOfBlock["leaves"])
-                if (IsNoTransparentBlock(listPos.x - 1, listPos.y, listPos.z))
-                    return false;
-            }
-            if (i == 4)
-            {
-                //if (World.Instance.GetBlock(listPos.x, listPos.y + 1, listPos.z) != BlockData.kindOfBlock["none"] && World.Instance.GetBlock(listPos.x, listPos.y + 1, listPos.z) != BlockData.kindOfBlock["leaves"])
-                if (IsNoTransparentBlock(listPos.x, listPos.y + 1, listPos.z))
-                    return false;
-            }
-            if (i == 5)
-            {
-                //if (World.Instance.GetBlock(listPos.x, listPos.y - 1, listPos.z) != BlockData.kindOfBlock["none"] && World.Instance.GetBlock(listPos.x, listPos.y - 1, listPos.z) != BlockData.kindOfBlock["leaves"])
-                if (IsNoTransparentBlock(listPos.x, listPos.y - 1, listPos.z))
-                    return false;
-            }
+            if (IsNoTransparentBlock(listPos.x, listPos.y, listPos.z - 1))
+                return false;
         }
-        catch(ArgumentOutOfRangeException)
+        else if (i == 1)
         {
-            return false;
+            if (IsNoTransparentBlock(listPos.x + 1, listPos.y, listPos.z))
+                return false;
         }
-        catch (NullReferenceException)
+        else if (i == 2)
         {
-            return false;
+            if (IsNoTransparentBlock(listPos.x, listPos.y, listPos.z + 1))
+                return false;
         }
+        else if (i == 3)
+        {
+            if (IsNoTransparentBlock(listPos.x - 1, listPos.y, listPos.z))
+                return false;
+        }
+        else if (i == 4)
+        {
+            if (IsNoTransparentBlock(listPos.x, listPos.y + 1, listPos.z))
+                return false;
+        }
+        else if (i == 5)
+        {
+            if (IsNoTransparentBlock(listPos.x, listPos.y - 1, listPos.z))
+                return false;
+        }
+
         return true;
     }
 
     private bool IsNoTransparentBlock(int x, int y, int z)
     {
-        return World.Instance.GetBlock(x, y, z) != BlockData.kindOfBlock["none"] && World.Instance.GetBlock(x, y, z) != BlockData.kindOfBlock["leaves"] && World.Instance.GetBlock(x, y, z) != BlockData.kindOfBlock["spruce-leaves"];
+        if(World.Instance.GetBlockListLength(x, y, z))
+            return World.Instance.GetBlock(x, y, z) != BlockData.kindOfBlock["none"] && World.Instance.GetBlock(x, y, z) != BlockData.kindOfBlock["leaves"] && World.Instance.GetBlock(x, y, z) != BlockData.kindOfBlock["spruce-leaves"];
+        return false;
     }
 
     private void DrawBlock(Vector3Int blockInWorldPosition, int kindOfBlock, Vector3Int blockInList)
@@ -172,17 +159,22 @@ public class Chunk
                 uv.Add(GetVectorUV(vectorUV, kindOfBlock, i));
                 vertices.Add(BlockData.vertex[vertexIndex] + blockInWorldPosition);
                 triangle.Add(triangleIndex);
-                if (i == BlockData.top && kindOfBlock == BlockData.kindOfBlock["greenDirt"])
-                    colors.Add(new Color(0.509f, 1f, 0.236f, 1f));
-                else if(kindOfBlock == BlockData.kindOfBlock["leaves"])
-                    colors.Add(new Color(0.13f, 0.32f, 0f, 1f));
-                else if (kindOfBlock == BlockData.kindOfBlock["spruce-leaves"])
-                    colors.Add(new Color(0.1f, 0.24f, 0f, 1f));
-                else
-                    colors.Add(new Color(1f, 1f, 1f, 1f));
+                ColorTheBlock(kindOfBlock, i);
                 triangleIndex++;
             }
         }
+    }
+
+    private void ColorTheBlock(int kindOfBlock, int i)
+    {
+        if (i == BlockData.top && kindOfBlock == BlockData.kindOfBlock["greenDirt"])
+            colors.Add(new Color(0.509f, 1f, 0.236f, 1f));
+        else if (kindOfBlock == BlockData.kindOfBlock["leaves"])
+            colors.Add(new Color(0.13f, 0.32f, 0f, 1f));
+        else if (kindOfBlock == BlockData.kindOfBlock["spruce-leaves"])
+            colors.Add(new Color(0.1f, 0.24f, 0f, 1f));
+        else
+            colors.Add(new Color(1f, 1f, 1f, 1f));
     }
 
     private Vector2 GetVectorUV(Vector2 offsetUV, int kindOfBlock, int wall)

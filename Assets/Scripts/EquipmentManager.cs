@@ -31,7 +31,7 @@ public class EquipmentManager : MonoBehaviour
                 itemId[x,z] = BlockData.kindOfBlock["none"];
 
         Transform temp;
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < 4; i++)    //this loop is made only to test dragging items
         {
             temp = equipmentToolBar.Find("ToolBarInventorySlot (" + i + ")");
             temp = temp.Find("Image");

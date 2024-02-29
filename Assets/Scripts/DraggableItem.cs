@@ -81,8 +81,8 @@ public class DraggableItem : MonoBehaviour, IBeginDragHandler, IEndDragHandler, 
 
     public void OnEndDrag(PointerEventData eventData)
     {
-        isDragging = false;
         Debug.Log("End drag");
+        isDragging = false;
         image.raycastTarget = true;
         transform.SetParent(parentAfterDrag);
         eventData.pointerDrag.GetComponent<RectTransform>().anchoredPosition = Vector3.zero;
